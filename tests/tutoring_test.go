@@ -659,3 +659,260 @@ func TestSubmitAnswerForUnknownLearnerIsRejected(t *testing.T) {
 		t.Fatal("submitting an answer for a learner not in the roster must be rejected")
 	}
 }
+
+// TestSubjectDefaultsEmpty confirms a new session has no subject
+// selected until SelectSubject is called (Blueprint lesson #9: "The
+// system must handle subject switching, such as Mathematics to
+// Christian Religious Studies").
+func TestSubjectDefaultsEmpty(t *testing.T) {
+	s := session.New("Amaka")
+	if s.Subject() != "" {
+		t.Fatalf("expected empty subject before SelectSubject, got %q", s.Subject())
+	}
+}
+
+// TestSwitchingSubjectResetsDiagnosisState is a direct test of Blueprint
+// lesson #9. Switching to a genuinely different subject must reset
+// diagnosis (the new subject has not been diagnosed yet) and clear any
+// pending question, answer, and confirmation state left over from the
+// previous subject.
+func TestSwitchingSubjectResetsDiagnosisState(t *testing.T) {
+	s := session.New("Amaka")
+	s.SelectSubject("Mathematics")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+
+	s.SelectSubject("Christian Religious Studies")
+
+	if s.Subject() != "Christian Religious Studies" {
+		t.Fatalf("expected subject to update, got %q", s.Subject())
+	}
+
+	if s.DiagnosisComplete() {
+		t.Fatal("switching subjects must reset diagnosis for the new subject")
+	}
+
+	if s.State() != session.Idle {
+		t.Fatalf("expected state Idle after switching subjects, got %v", s.State())
+	}
+
+	if s.HasAnswer() {
+		t.Fatal("switching subjects must not carry over the previous subject's answer")
+	}
+
+	if s.CurrentQuestion() != "" {
+		t.Fatalf("switching subjects must clear the pending question, got %q", s.CurrentQuestion())
+	}
+
+	if s.ConfirmationCount() != 0 {
+		t.Fatalf("switching subjects must reset confirmation count, got %d", s.ConfirmationCount())
+	}
+
+	err := s.AskQuestion("Who created the world?", "God")
+	if err == nil {
+		t.Fatal("AskQuestion must be rejected until the new subject has been diagnosed")
+	}
+}
+
+// TestSelectingSameSubjectDoesNotResetState confirms SelectSubject is
+// idempotent for the current subject — re-selecting the subject already
+// in progress must not destroy in-progress diagnosis or question state.
+func TestSelectingSameSubjectDoesNotResetState(t *testing.T) {
+	s := session.New("Amaka")
+	s.SelectSubject("Mathematics")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+
+	s.SelectSubject("Mathematics")
+
+	if s.State() != session.WaitForAnswer {
+		t.Fatalf("re-selecting the same subject must not reset in-progress state, got %v", s.State())
+	}
+
+	if !s.DiagnosisComplete() {
+		t.Fatal("re-selecting the same subject must not reset diagnosis")
+	}
+
+	if s.CurrentQuestion() != "What is 7 + 3?" {
+		t.Fatalf("re-selecting the same subject must not clear the pending question, got %q", s.CurrentQuestion())
+	}
+}
+
+// TestMasteryIsPreservedAcrossSubjectSwitch is a direct test of the
+// statistical-analysis prerequisite: mastery must be tracked per subject,
+// not as a single session-wide flag, so switching subjects and back does
+// not erase what the learner already demonstrated.
+func TestMasteryIsPreservedAcrossSubjectSwitch(t *testing.T) {
+	s := session.New("Amaka")
+
+	s.SelectSubject("Mathematics")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("10")
+	s.CheckAnswer()
+	s.AskTransferQuestion("What is 5 + 6?", "11")
+	s.SubmitAnswer("11")
+	s.CheckAnswer()
+
+	if !s.IsMastered() {
+		t.Fatal("expected Mathematics to be mastered before switching subjects")
+	}
+
+	s.SelectSubject("Christian Religious Studies")
+
+	if s.IsMastered() {
+		t.Fatal("a freshly selected subject must not inherit mastery from the previous subject")
+	}
+
+	s.SelectSubject("Mathematics")
+
+	if !s.IsMastered() {
+		t.Fatal("switching back to Mathematics must restore its previously recorded mastery")
+	}
+
+	if s.State() != session.Mastered {
+		t.Fatalf("switching back to a mastered subject should restore state Mastered, got %v", s.State())
+	}
+}
+
+// TestAdvanceTurnMovesToNextLearnerInOrder is a direct test of README
+// §3 "One active respondent" / Blueprint lesson #1 "explicit turn
+// management" for the MOVE_TO_NEXT_LEARNER_OR_QUESTION stage of the
+// state machine (README §9): the roster must be able to move the turn
+// forward, in roster order, so a different learner becomes active.
+func TestAdvanceTurnMovesToNextLearnerInOrder(t *testing.T) {
+	r := session.NewRoster("Amaka", "Bello", "Chidi")
+
+	if r.ActiveLearner() != "Amaka" {
+		t.Fatalf("expected Amaka to start active, got %s", r.ActiveLearner())
+	}
+
+	r.AdvanceTurn()
+	if r.ActiveLearner() != "Bello" {
+		t.Fatalf("expected Bello to become active, got %s", r.ActiveLearner())
+	}
+
+	r.AdvanceTurn()
+	if r.ActiveLearner() != "Chidi" {
+		t.Fatalf("expected Chidi to become active, got %s", r.ActiveLearner())
+	}
+}
+
+// TestAdvanceTurnWrapsAroundToFirstLearner confirms turn order is a
+// rotation, not a one-shot sequence — after the last learner, the turn
+// returns to the first so the tutoring loop can continue indefinitely.
+func TestAdvanceTurnWrapsAroundToFirstLearner(t *testing.T) {
+	r := session.NewRoster("Amaka", "Bello")
+
+	r.AdvanceTurn()
+	if r.ActiveLearner() != "Bello" {
+		t.Fatalf("expected Bello to become active, got %s", r.ActiveLearner())
+	}
+
+	r.AdvanceTurn()
+	if r.ActiveLearner() != "Amaka" {
+		t.Fatalf("expected turn to wrap around to Amaka, got %s", r.ActiveLearner())
+	}
+}
+
+// TestAdvanceTurnOnSingleLearnerRosterIsANoOp confirms a roster of one
+// learner does not lose its active learner when advanced — there is no
+// one else for the turn to move to.
+func TestAdvanceTurnOnSingleLearnerRosterIsANoOp(t *testing.T) {
+	r := session.NewRoster("Amaka")
+
+	r.AdvanceTurn()
+
+	if r.ActiveLearner() != "Amaka" {
+		t.Fatalf("expected Amaka to remain active on a single-learner roster, got %s", r.ActiveLearner())
+	}
+}
+
+// TestSwitchingAwayFromUnmasteredProgressDiscardsInProgressState covers
+// the subject-switching edge case where a learner has answered the
+// original question correctly but has not yet passed the transfer/
+// verification question (README §3, "Correct ≠ understanding": a
+// correct answer alone is not durable evidence of mastery). Switching
+// subjects and back must not resurrect that in-progress, unverified
+// state — the learner must be re-diagnosed, same as any other
+// non-mastered subject.
+func TestSwitchingAwayFromUnmasteredProgressDiscardsInProgressState(t *testing.T) {
+	s := session.New("Amaka")
+
+	s.SelectSubject("Mathematics")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("10")
+	s.CheckAnswer()
+
+	if s.State() != session.AwaitingTransferCheck {
+		t.Fatalf("expected AwaitingTransferCheck before switching, got %v", s.State())
+	}
+
+	s.SelectSubject("Christian Religious Studies")
+	s.SelectSubject("Mathematics")
+
+	if s.IsMastered() {
+		t.Fatal("a correct-but-unverified answer must not count as mastery after switching back")
+	}
+
+	if s.State() != session.Idle {
+		t.Fatalf("expected state Idle after returning to an unmastered subject, got %v", s.State())
+	}
+
+	if s.DiagnosisComplete() {
+		t.Fatal("returning to an unmastered subject must require diagnosis again")
+	}
+
+	if s.CurrentQuestion() != "" {
+		t.Fatalf("returning to an unmastered subject must not resurrect the old pending question, got %q", s.CurrentQuestion())
+	}
+
+	if s.HasAnswer() {
+		t.Fatal("returning to an unmastered subject must not resurrect the old answer")
+	}
+
+	err := s.AskQuestion("What is 7 + 3?", "10")
+	if err == nil {
+		t.Fatal("AskQuestion must be rejected until diagnosis is redone for this subject")
+	}
+}
+
+// TestSubmitAnswerDoesNotAutomaticallyAdvanceTurn confirms turn
+// advancement is not an automatic side effect of checking an answer.
+// Per product decision, the roster's active learner only changes when a
+// caller (the teacher/orchestrator) explicitly calls AdvanceTurn — never
+// as an implicit consequence of SubmitAnswerFor or CheckAnswer, even
+// when the answer is correct and mastery is recorded.
+func TestSubmitAnswerDoesNotAutomaticallyAdvanceTurn(t *testing.T) {
+	r := session.NewRoster("Amaka", "Bello")
+
+	amaka := r.Session("Amaka")
+	amaka.SelectSubject("Mathematics")
+	amaka.StartDiagnosis("What do you already know about addition?")
+	amaka.RecordDiagnosticResponse("I know how to add single digits")
+	amaka.AskQuestion("What is 7 + 3?", "10")
+
+	if err := r.SubmitAnswerFor("Amaka", "10"); err != nil {
+		t.Fatalf("expected SubmitAnswerFor to succeed, got error: %v", err)
+	}
+	amaka.CheckAnswer()
+	amaka.AskTransferQuestion("What is 5 + 6?", "11")
+
+	if err := r.SubmitAnswerFor("Amaka", "11"); err != nil {
+		t.Fatalf("expected SubmitAnswerFor to succeed, got error: %v", err)
+	}
+	amaka.CheckAnswer()
+
+	if !amaka.IsMastered() {
+		t.Fatal("expected Amaka's Mathematics to be mastered at this point")
+	}
+
+	if r.ActiveLearner() != "Amaka" {
+		t.Fatalf("turn must not auto-advance on mastery; expected Amaka still active, got %s", r.ActiveLearner())
+	}
+}

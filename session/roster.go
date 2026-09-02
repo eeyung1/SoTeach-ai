@@ -51,6 +51,23 @@ func (r *Roster) ActiveLearner() string {
 	return r.active
 }
 
+// AdvanceTurn moves the active respondent to the next learner in roster
+// order (README §9, MOVE_TO_NEXT_LEARNER_OR_QUESTION), wrapping around to
+// the first learner after the last. On a roster with zero or one
+// learners, it is a no-op — there is no one else for the turn to move to.
+func (r *Roster) AdvanceTurn() {
+	if len(r.order) < 2 {
+		return
+	}
+
+	for i, name := range r.order {
+		if name == r.active {
+			r.active = r.order[(i+1)%len(r.order)]
+			return
+		}
+	}
+}
+
 // SubmitAnswerFor submits an answer on behalf of the named learner. It is
 // rejected if the learner is not part of the roster (ErrLearnerNotFound)
 // or is not the currently active respondent (ErrLearnerNotActive) — a

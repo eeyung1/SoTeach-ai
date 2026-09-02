@@ -58,12 +58,14 @@ var ErrReteachingRequired = errors.New("must teach the gap before asking another
 // or shares state across learners.
 type Session struct {
 	learnerName          string
+	subject              string
 	state                State
 	question             string
 	expectedAnswer       string
 	answer               string
 	hasAnswer            bool
 	mastered             bool
+	masteryBySubject     map[string]bool
 	confirmationCount    int
 	diagnosticPrompt     string
 	diagnosticFinding    string
@@ -76,12 +78,59 @@ type Session struct {
 
 // New creates a session for a single named learner.
 func New(learnerName string) *Session {
-	return &Session{learnerName: learnerName, state: Idle}
+	return &Session{learnerName: learnerName, state: Idle, masteryBySubject: map[string]bool{}}
 }
 
 // LearnerName returns the name of the learner this session belongs to.
 func (s *Session) LearnerName() string {
 	return s.learnerName
+}
+
+// Subject returns the currently selected subject, or the empty string if
+// no subject has been selected yet.
+func (s *Session) Subject() string {
+	return s.subject
+}
+
+// SelectSubject sets the active subject (Blueprint lesson #9: "The system
+// must handle subject switching, such as Mathematics to Christian
+// Religious Studies").
+//
+// Selecting a genuinely different subject resets diagnosis and clears any
+// pending question, answer, and confirmation state left over from the
+// previous subject — the new subject has not been diagnosed yet, and none
+// of that state belongs to it. Re-selecting the subject already in
+// progress is a no-op with respect to that state, so it does not destroy
+// work in progress.
+func (s *Session) SelectSubject(subject string) {
+	if subject == s.subject {
+		return
+	}
+
+	s.subject = subject
+	s.state = Idle
+	s.diagnosisComplete = false
+	s.diagnosticPrompt = ""
+	s.diagnosticFinding = ""
+	s.question = ""
+	s.originalQuestion = ""
+	s.expectedAnswer = ""
+	s.answer = ""
+	s.hasAnswer = false
+	s.confirmationCount = 0
+	s.isTransferQuestion = false
+	s.taughtSinceUncertain = false
+	s.lastTeaching = ""
+
+	// Mastery is tracked per subject (statistical-analysis prerequisite),
+	// not as one session-wide flag, so switching subjects and back must
+	// restore what was already demonstrated rather than erase it.
+	if s.masteryBySubject[subject] {
+		s.mastered = true
+		s.state = Mastered
+	} else {
+		s.mastered = false
+	}
 }
 
 // StartDiagnosis begins README §2 Stage 1 (DIAGNOSE): asking the learner
@@ -214,6 +263,12 @@ func (s *Session) CheckAnswer() bool {
 	case correct && s.isTransferQuestion:
 		s.mastered = true
 		s.state = Mastered
+		if s.masteryBySubject == nil {
+			s.masteryBySubject = map[string]bool{}
+		}
+		if s.subject != "" {
+			s.masteryBySubject[s.subject] = true
+		}
 	case correct:
 		s.state = AwaitingTransferCheck
 	default:
