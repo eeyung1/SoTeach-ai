@@ -3,6 +3,8 @@ package session
 import (
 	"errors"
 	"strings"
+
+	"soteach/ai"
 )
 
 // State represents a step in the tutoring state machine (README §6).
@@ -90,6 +92,7 @@ type Session struct {
 	confirmationCount    int
 	diagnosticPrompt     string
 	diagnosticFinding    string
+	diagnosticResult     ai.DiagnosticResult
 	diagnosisComplete    bool
 	originalQuestion     string
 	isTransferQuestion   bool
@@ -193,6 +196,7 @@ func (s *Session) resetForNewSelection() {
 	s.diagnosisComplete = false
 	s.diagnosticPrompt = ""
 	s.diagnosticFinding = ""
+	s.diagnosticResult = ai.DiagnosticResult{}
 	s.question = ""
 	s.originalQuestion = ""
 	s.expectedAnswer = ""
@@ -265,6 +269,28 @@ func (s *Session) DiagnosisComplete() bool {
 // the diagnostic stage.
 func (s *Session) DiagnosticFinding() string {
 	return s.diagnosticFinding
+}
+
+// RecordDiagnosticResult records an AI-validated diagnosis (Agent.md
+// §39-40) as an alternative to RecordDiagnosticResponse. The result is
+// validated at this boundary, where state actually changes, before it is
+// allowed to mark diagnosis complete — a malformed result is rejected
+// outright and leaves diagnosisComplete and the stored result untouched.
+func (s *Session) RecordDiagnosticResult(result ai.DiagnosticResult) error {
+	if err := ai.ValidateDiagnosticResult(result); err != nil {
+		return err
+	}
+
+	s.diagnosticResult = result
+	s.diagnosisComplete = true
+	return nil
+}
+
+// LastDiagnosticResult returns the most recently recorded AI-validated
+// diagnostic result, or the zero value if none has been recorded (or it
+// has been cleared by a subject/topic switch).
+func (s *Session) LastDiagnosticResult() ai.DiagnosticResult {
+	return s.diagnosticResult
 }
 
 // AskQuestion poses the original practice question along with its expected
