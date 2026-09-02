@@ -916,3 +916,150 @@ func TestSubmitAnswerDoesNotAutomaticallyAdvanceTurn(t *testing.T) {
 		t.Fatalf("turn must not auto-advance on mastery; expected Amaka still active, got %s", r.ActiveLearner())
 	}
 }
+
+// TestTopicDefaultsEmpty confirms a new session has no topic selected
+// until SelectTopic is called (README §6, SELECT_SUBJECT -> SELECT_TOPIC).
+func TestTopicDefaultsEmpty(t *testing.T) {
+	s := session.New("Amaka")
+	if s.Topic() != "" {
+		t.Fatalf("expected empty topic before SelectTopic, got %q", s.Topic())
+	}
+}
+
+// TestSelectTopicRequiresSubjectSelectedFirst enforces README §6's
+// nesting: SELECT_SUBJECT must happen before SELECT_TOPIC. Selecting a
+// topic before any subject is chosen is rejected rather than silently
+// allowed.
+func TestSelectTopicRequiresSubjectSelectedFirst(t *testing.T) {
+	s := session.New("Amaka")
+
+	err := s.SelectTopic("Addition")
+	if err == nil {
+		t.Fatal("expected SelectTopic to be rejected before a subject is selected")
+	}
+
+	if s.Topic() != "" {
+		t.Fatalf("rejected SelectTopic must not change the topic, got %q", s.Topic())
+	}
+}
+
+// TestSwitchingTopicResetsDiagnosisState mirrors subject switching one
+// level deeper: switching to a genuinely different topic within the same
+// subject must reset diagnosis and clear any pending question, answer,
+// and confirmation state, since the new topic has not been diagnosed yet.
+func TestSwitchingTopicResetsDiagnosisState(t *testing.T) {
+	s := session.New("Amaka")
+	s.SelectSubject("Mathematics")
+	if err := s.SelectTopic("Addition"); err != nil {
+		t.Fatalf("expected SelectTopic to succeed, got error: %v", err)
+	}
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+
+	if err := s.SelectTopic("Fractions"); err != nil {
+		t.Fatalf("expected SelectTopic to succeed, got error: %v", err)
+	}
+
+	if s.Topic() != "Fractions" {
+		t.Fatalf("expected topic to update, got %q", s.Topic())
+	}
+
+	if s.DiagnosisComplete() {
+		t.Fatal("switching topics must reset diagnosis for the new topic")
+	}
+
+	if s.State() != session.Idle {
+		t.Fatalf("expected state Idle after switching topics, got %v", s.State())
+	}
+
+	if s.CurrentQuestion() != "" {
+		t.Fatalf("switching topics must clear the pending question, got %q", s.CurrentQuestion())
+	}
+
+	if s.ConfirmationCount() != 0 {
+		t.Fatalf("switching topics must reset confirmation count, got %d", s.ConfirmationCount())
+	}
+
+	err := s.AskQuestion("What is 1/2 + 1/4?", "3/4")
+	if err == nil {
+		t.Fatal("AskQuestion must be rejected until the new topic has been diagnosed")
+	}
+}
+
+// TestSelectingSameTopicDoesNotResetState confirms SelectTopic is
+// idempotent for the current topic, same as SelectSubject.
+func TestSelectingSameTopicDoesNotResetState(t *testing.T) {
+	s := session.New("Amaka")
+	s.SelectSubject("Mathematics")
+	s.SelectTopic("Addition")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+
+	if err := s.SelectTopic("Addition"); err != nil {
+		t.Fatalf("expected re-selecting the same topic to succeed, got error: %v", err)
+	}
+
+	if s.State() != session.WaitForAnswer {
+		t.Fatalf("re-selecting the same topic must not reset in-progress state, got %v", s.State())
+	}
+
+	if s.CurrentQuestion() != "What is 7 + 3?" {
+		t.Fatalf("re-selecting the same topic must not clear the pending question, got %q", s.CurrentQuestion())
+	}
+}
+
+// TestMasteryIsTrackedPerTopicNotPerSubject confirms mastery granularity:
+// mastering one topic within a subject must not mark a different topic
+// in the same subject as mastered, and switching between topics must
+// preserve each topic's own mastery independently.
+func TestMasteryIsTrackedPerTopicNotPerSubject(t *testing.T) {
+	s := session.New("Amaka")
+
+	s.SelectSubject("Mathematics")
+	s.SelectTopic("Addition")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("10")
+	s.CheckAnswer()
+	s.AskTransferQuestion("What is 5 + 6?", "11")
+	s.SubmitAnswer("11")
+	s.CheckAnswer()
+
+	if !s.IsMastered() {
+		t.Fatal("expected Addition to be mastered before switching topics")
+	}
+
+	s.SelectTopic("Fractions")
+
+	if s.IsMastered() {
+		t.Fatal("a freshly selected topic must not inherit mastery from a different topic in the same subject")
+	}
+
+	s.SelectTopic("Addition")
+
+	if !s.IsMastered() {
+		t.Fatal("switching back to Addition must restore its previously recorded mastery")
+	}
+
+	if s.State() != session.Mastered {
+		t.Fatalf("switching back to a mastered topic should restore state Mastered, got %v", s.State())
+	}
+}
+
+// TestSwitchingSubjectResetsTopicSelection confirms a subject switch
+// clears the topic — a new subject has not had any topic chosen within
+// it yet, so the previous subject's topic must not carry over.
+func TestSwitchingSubjectResetsTopicSelection(t *testing.T) {
+	s := session.New("Amaka")
+	s.SelectSubject("Mathematics")
+	s.SelectTopic("Addition")
+
+	s.SelectSubject("Christian Religious Studies")
+
+	if s.Topic() != "" {
+		t.Fatalf("switching subjects must clear the previously selected topic, got %q", s.Topic())
+	}
+}

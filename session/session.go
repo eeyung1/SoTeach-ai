@@ -49,6 +49,12 @@ var ErrTransferQuestionNotDistinct = errors.New("transfer question must be genui
 // wrong-but-attempted (Incorrect) answer, which may loop back directly.
 var ErrReteachingRequired = errors.New("must teach the gap before asking another question after an uncertain answer")
 
+// ErrSubjectNotSelected is returned when SelectTopic is called before a
+// subject has been selected (README §6, SELECT_SUBJECT -> SELECT_TOPIC:
+// topic selection is nested inside subject selection, not independent
+// of it).
+var ErrSubjectNotSelected = errors.New("a subject must be selected before a topic can be selected")
+
 // Session holds the minimal state needed to satisfy the "wait for the
 // student" and "never mark correct without checking" rules (README §3).
 //
@@ -59,6 +65,7 @@ var ErrReteachingRequired = errors.New("must teach the gap before asking another
 type Session struct {
 	learnerName          string
 	subject              string
+	topic                string
 	state                State
 	question             string
 	expectedAnswer       string
@@ -108,6 +115,46 @@ func (s *Session) SelectSubject(subject string) {
 	}
 
 	s.subject = subject
+	s.topic = ""
+	s.resetForNewSelection()
+	s.restoreMasteryForCurrentSelection()
+}
+
+// SelectTopic sets the active topic within the currently selected subject
+// (README §6, SELECT_SUBJECT -> SELECT_TOPIC). It is rejected until a
+// subject has been selected.
+//
+// Selecting a genuinely different topic resets diagnosis and clears any
+// pending question, answer, and confirmation state, the same way
+// SelectSubject does — the new topic has not been diagnosed yet.
+// Re-selecting the topic already in progress is a no-op with respect to
+// that state.
+func (s *Session) SelectTopic(topic string) error {
+	if s.subject == "" {
+		return ErrSubjectNotSelected
+	}
+
+	if topic == s.topic {
+		return nil
+	}
+
+	s.topic = topic
+	s.resetForNewSelection()
+	s.restoreMasteryForCurrentSelection()
+	return nil
+}
+
+// Topic returns the currently selected topic, or the empty string if no
+// topic has been selected yet.
+func (s *Session) Topic() string {
+	return s.topic
+}
+
+// resetForNewSelection clears diagnosis and pending question/answer/
+// confirmation state shared by SelectSubject and SelectTopic when moving
+// to a genuinely new subject or topic. It does not touch mastery — the
+// caller restores that afterward via restoreMasteryForCurrentSelection.
+func (s *Session) resetForNewSelection() {
 	s.state = Idle
 	s.diagnosisComplete = false
 	s.diagnosticPrompt = ""
@@ -121,11 +168,22 @@ func (s *Session) SelectSubject(subject string) {
 	s.isTransferQuestion = false
 	s.taughtSinceUncertain = false
 	s.lastTeaching = ""
+}
 
-	// Mastery is tracked per subject (statistical-analysis prerequisite),
-	// not as one session-wide flag, so switching subjects and back must
-	// restore what was already demonstrated rather than erase it.
-	if s.masteryBySubject[subject] {
+// masteryKey identifies the current subject+topic for mastery tracking.
+// Mastery is tracked per topic within a subject (not per subject as a
+// whole), so mastering Mathematics/Addition must not mark
+// Mathematics/Fractions as mastered.
+func (s *Session) masteryKey() string {
+	return s.subject + "|" + s.topic
+}
+
+// restoreMasteryForCurrentSelection restores mastered/state from the
+// per-subject-and-topic mastery map for whatever subject+topic is
+// currently selected, so switching away and back does not erase
+// previously demonstrated mastery.
+func (s *Session) restoreMasteryForCurrentSelection() {
+	if s.masteryBySubject[s.masteryKey()] {
 		s.mastered = true
 		s.state = Mastered
 	} else {
@@ -267,7 +325,7 @@ func (s *Session) CheckAnswer() bool {
 			s.masteryBySubject = map[string]bool{}
 		}
 		if s.subject != "" {
-			s.masteryBySubject[s.subject] = true
+			s.masteryBySubject[s.masteryKey()] = true
 		}
 	case correct:
 		s.state = AwaitingTransferCheck
