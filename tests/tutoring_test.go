@@ -1167,3 +1167,50 @@ func TestGradeBandSurvivesSubjectAndTopicSwitch(t *testing.T) {
 		t.Fatalf("grade band must survive subject/topic switches, got %q", s.GradeBand())
 	}
 }
+
+// TestSwitchingTopicAwayFromUnmasteredProgressDiscardsInProgressState is
+// the topic-level counterpart to
+// TestSwitchingAwayFromUnmasteredProgressDiscardsInProgressState.
+// SelectTopic shares reset logic with SelectSubject, but that sharing
+// has not been proven at the topic granularity: a correct-but-not-yet-
+// transfer-verified answer in one topic must not survive a switch to a
+// different topic and back, and re-diagnosis must be required.
+func TestSwitchingTopicAwayFromUnmasteredProgressDiscardsInProgressState(t *testing.T) {
+	s := session.New("Amaka")
+
+	s.SelectSubject("Mathematics")
+	s.SelectTopic("Addition")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("10")
+	s.CheckAnswer()
+
+	if s.State() != session.AwaitingTransferCheck {
+		t.Fatalf("expected AwaitingTransferCheck before switching, got %v", s.State())
+	}
+
+	s.SelectTopic("Fractions")
+	s.SelectTopic("Addition")
+
+	if s.IsMastered() {
+		t.Fatal("a correct-but-unverified answer must not count as mastery after switching topics and back")
+	}
+
+	if s.State() != session.Idle {
+		t.Fatalf("expected state Idle after returning to an unmastered topic, got %v", s.State())
+	}
+
+	if s.DiagnosisComplete() {
+		t.Fatal("returning to an unmastered topic must require diagnosis again")
+	}
+
+	if s.CurrentQuestion() != "" {
+		t.Fatalf("returning to an unmastered topic must not resurrect the old pending question, got %q", s.CurrentQuestion())
+	}
+
+	err := s.AskQuestion("What is 7 + 3?", "10")
+	if err == nil {
+		t.Fatal("AskQuestion must be rejected until diagnosis is redone for this topic")
+	}
+}
