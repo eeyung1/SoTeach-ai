@@ -16,6 +16,7 @@ const (
 	CheckAnswer
 	AwaitingTransferCheck
 	Incorrect
+	Uncertain
 	Mastered
 )
 
@@ -41,6 +42,13 @@ var ErrQuestionAlreadyPending = errors.New("cannot ask a new question while one 
 // same one").
 var ErrTransferQuestionNotDistinct = errors.New("transfer question must be genuinely different from the original question")
 
+// ErrReteachingRequired is returned when AskQuestion is called after an
+// uncertain answer ("I don't know") without an intervening Teach() call.
+// Product decision: uncertainty must route toward re-teaching, not
+// straight back into another practice question — unlike a genuine
+// wrong-but-attempted (Incorrect) answer, which may loop back directly.
+var ErrReteachingRequired = errors.New("must teach the gap before asking another question after an uncertain answer")
+
 // Session holds the minimal state needed to satisfy the "wait for the
 // student" and "never mark correct without checking" rules (README §3).
 //
@@ -49,19 +57,21 @@ var ErrTransferQuestionNotDistinct = errors.New("transfer question must be genui
 // are represented as two independent Session values — nothing here merges
 // or shares state across learners.
 type Session struct {
-	learnerName        string
-	state              State
-	question           string
-	expectedAnswer     string
-	answer             string
-	hasAnswer          bool
-	mastered           bool
-	confirmationCount  int
-	diagnosticPrompt   string
-	diagnosticFinding  string
-	diagnosisComplete  bool
-	originalQuestion   string
-	isTransferQuestion bool
+	learnerName          string
+	state                State
+	question             string
+	expectedAnswer       string
+	answer               string
+	hasAnswer            bool
+	mastered             bool
+	confirmationCount    int
+	diagnosticPrompt     string
+	diagnosticFinding    string
+	diagnosisComplete    bool
+	originalQuestion     string
+	isTransferQuestion   bool
+	taughtSinceUncertain bool
+	lastTeaching         string
 }
 
 // New creates a session for a single named learner.
@@ -122,6 +132,10 @@ func (s *Session) AskQuestion(question, expectedAnswer string) error {
 		return ErrQuestionAlreadyPending
 	}
 
+	if s.state == Uncertain && !s.taughtSinceUncertain {
+		return ErrReteachingRequired
+	}
+
 	s.question = question
 	s.originalQuestion = question
 	s.expectedAnswer = expectedAnswer
@@ -129,6 +143,7 @@ func (s *Session) AskQuestion(question, expectedAnswer string) error {
 	s.state = WaitForAnswer
 	s.hasAnswer = false
 	s.confirmationCount = 0
+	s.taughtSinceUncertain = false
 	return nil
 }
 
@@ -171,9 +186,27 @@ func (s *Session) SubmitAnswer(a string) {
 // AwaitingTransferCheck, which requires a transfer/verification question
 // (see AskTransferQuestion) before mastery can be recorded. Only a correct
 // answer to that transfer question sets Mastered.
+// uncertainPhrases are common ways a learner signals they don't know the
+// answer rather than making a genuine incorrect attempt (README §9,
+// "explicit uncertainty behavior").
+var uncertainPhrases = map[string]bool{
+	"i don't know": true,
+	"i dont know":  true,
+	"idk":          true,
+	"not sure":     true,
+	"no idea":      true,
+}
+
 func (s *Session) CheckAnswer() bool {
+	trimmedAnswer := strings.TrimSpace(s.answer)
+
+	if uncertainPhrases[strings.ToLower(trimmedAnswer)] {
+		s.state = Uncertain
+		return false
+	}
+
 	correct := strings.EqualFold(
-		strings.TrimSpace(s.answer),
+		trimmedAnswer,
 		strings.TrimSpace(s.expectedAnswer),
 	)
 
@@ -196,6 +229,10 @@ func (s *Session) CheckAnswer() bool {
 // if the limit has already been reached. The count is explicit state on
 // Session, not left to an LLM's own memory of how many times it has asked.
 func (s *Session) RequestConfirmation() bool {
+	if s.state == Idle || s.state == Diagnosing || s.state == WaitForAnswer {
+		return false
+	}
+
 	if s.confirmationCount >= maxConfirmations {
 		return false
 	}
@@ -223,4 +260,32 @@ func (s *Session) HasAnswer() bool {
 // verification question is also answered correctly.
 func (s *Session) IsMastered() bool {
 	return s.mastered
+}
+
+// CurrentQuestion returns the text of the currently pending question so a
+// learner interruption like "what was the question?" (README §3, "handle
+// interruptions without losing state") can be answered without affecting
+// state, the recorded answer, or the confirmation count. Safe to call
+// repeatedly and idempotently.
+func (s *Session) CurrentQuestion() string {
+	return s.question
+}
+
+// Teach records that the learner's gap has been explained following an
+// uncertain answer (README §2, TEACH stage). It must be called before
+// AskQuestion is allowed to proceed again when the session is in the
+// Uncertain state.
+func (s *Session) Teach(explanation string) {
+	s.lastTeaching = explanation
+
+	if s.state == Uncertain {
+		s.taughtSinceUncertain = true
+	}
+}
+
+// LastTeaching returns the explanation given by the most recent call to
+// Teach, or an empty string if Teach has never been called (README §9
+// safeguard 6, auditability; README §10, diagnostic findings).
+func (s *Session) LastTeaching() string {
+	return s.lastTeaching
 }

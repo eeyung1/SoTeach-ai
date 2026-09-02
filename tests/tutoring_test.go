@@ -354,3 +354,308 @@ func TestAskQuestionIsRejectedWhileAnswerIsPending(t *testing.T) {
 		t.Fatal("the original pending question (7 + 3 = 10) must still be in effect after a rejected AskQuestion")
 	}
 }
+
+// TestCurrentQuestionCanBeRepeatedWithoutLosingState is a direct test of
+// README §3, "Handle interruptions without losing state": a learner
+// asking "what was the question?" must be answerable without losing the
+// pending question, the answer state, or the confirmation count.
+func TestCurrentQuestionCanBeRepeatedWithoutLosingState(t *testing.T) {
+	s := session.New("Amaka")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+
+	first := s.CurrentQuestion()
+	if first != "What is 7 + 3?" {
+		t.Fatalf("expected current question %q, got %q", "What is 7 + 3?", first)
+	}
+
+	second := s.CurrentQuestion()
+	if second != first {
+		t.Fatalf("repeating the question changed the result: got %q, want %q", second, first)
+	}
+
+	if s.State() != session.WaitForAnswer {
+		t.Fatalf("repeating the question must not change state, got %v", s.State())
+	}
+	if s.HasAnswer() {
+		t.Fatal("repeating the question must not create an answer")
+	}
+	if s.ConfirmationCount() != 0 {
+		t.Fatalf("repeating the question must not affect confirmation count, got %d", s.ConfirmationCount())
+	}
+
+	s.SubmitAnswer("10")
+	if !s.CheckAnswer() {
+		t.Fatal("session must still check answers correctly after the question was repeated")
+	}
+}
+
+// TestRequestConfirmationRejectedBeforeAnswerIsChecked is a direct test
+// of README §8.3, "exact confirmation count": confirmation only makes
+// sense once an answer has actually been checked. Calling
+// RequestConfirmation while idle, mid-diagnosis, or still waiting for the
+// learner's answer must be rejected and must not consume the count.
+func TestRequestConfirmationRejectedBeforeAnswerIsChecked(t *testing.T) {
+	s := session.New("Amaka")
+
+	if s.RequestConfirmation() {
+		t.Fatal("confirmation must be rejected before diagnosis has even started")
+	}
+
+	s.StartDiagnosis("What do you already know about addition?")
+	if s.RequestConfirmation() {
+		t.Fatal("confirmation must be rejected while diagnosis is still in progress")
+	}
+
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	if s.RequestConfirmation() {
+		t.Fatal("confirmation must be rejected while still waiting for the learner's answer")
+	}
+
+	if s.ConfirmationCount() != 0 {
+		t.Fatalf("rejected confirmation attempts must not consume the count, got %d", s.ConfirmationCount())
+	}
+
+	s.SubmitAnswer("10")
+	s.CheckAnswer()
+
+	if !s.RequestConfirmation() {
+		t.Fatal("confirmation should be allowed once the answer has been checked")
+	}
+}
+
+// TestUncertainAnswerIsNotMarkedIncorrectOrCorrect is a direct test of
+// README §9, "Explicit uncertainty behavior — the system must not pretend
+// to know something it's uncertain about", and Agent.md §14's required
+// "uncertain/ambiguous answers" test category. A learner admitting they
+// don't know must be distinguished from a genuine wrong guess: not marked
+// correct, but also not folded into the same Incorrect state as an actual
+// incorrect attempt.
+func TestUncertainAnswerIsNotMarkedIncorrectOrCorrect(t *testing.T) {
+	s := session.New("Amaka")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("I don't know")
+
+	correct := s.CheckAnswer()
+
+	if correct {
+		t.Fatal("an uncertain answer must not be marked correct")
+	}
+
+	if s.State() != session.Uncertain {
+		t.Fatalf("expected state Uncertain for an 'I don't know' response, got %v", s.State())
+	}
+
+	if s.State() == session.Incorrect {
+		t.Fatal("an uncertain answer must be distinguished from a genuine incorrect guess")
+	}
+}
+
+// TestUncertainAnswerRecognizesCommonPhrasing checks that a couple of
+// common variants ("idk", "not sure") are recognized the same way, since
+// the behavior being tested is phrase recognition, not a new feature per
+// variant (Agent.md §55, test scope discipline).
+func TestUncertainAnswerRecognizesCommonPhrasing(t *testing.T) {
+	for _, phrase := range []string{"idk", "not sure", "Not Sure"} {
+		s := session.New("Amaka")
+		s.StartDiagnosis("What do you already know about addition?")
+		s.RecordDiagnosticResponse("I know how to add single digits")
+		s.AskQuestion("What is 7 + 3?", "10")
+		s.SubmitAnswer(phrase)
+
+		if correct := s.CheckAnswer(); correct {
+			t.Fatalf("phrase %q must not be marked correct", phrase)
+		}
+
+		if s.State() != session.Uncertain {
+			t.Fatalf("phrase %q: expected state Uncertain, got %v", phrase, s.State())
+		}
+	}
+}
+
+// TestAskQuestionIsRejectedAfterUncertainAnswerUntilTaught is a direct
+// test of the product decision that an uncertain answer ("I don't know")
+// must route toward re-teaching, not straight back into another practice
+// question. This supersedes the earlier assumption (that Uncertain and
+// Incorrect loop back identically) — see
+// TestIncorrectAnswerDoesNotRequireTeaching below for the contrast this
+// decision draws with a genuine wrong-but-attempted answer.
+func TestAskQuestionIsRejectedAfterUncertainAnswerUntilTaught(t *testing.T) {
+	s := session.New("Amaka")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("I don't know")
+	s.CheckAnswer()
+
+	if s.State() != session.Uncertain {
+		t.Fatalf("expected state Uncertain after 'I don't know', got %v", s.State())
+	}
+
+	err := s.AskQuestion("What is 2 + 3?", "5")
+	if err == nil {
+		t.Fatal("AskQuestion must be rejected after an uncertain answer until the gap has been taught")
+	}
+
+	if s.State() != session.Uncertain {
+		t.Fatalf("state must remain Uncertain after a rejected AskQuestion, got %v", s.State())
+	}
+}
+
+// TestUncertainAnswerLoopsBackToNewQuestionAfterTeaching confirms that
+// once Teach() has been called for the gap surfaced by an uncertain
+// answer, the loop continues normally: AskQuestion is allowed again, and
+// prior answer/confirmation state does not carry over into the retry
+// (README §6, HANDLE_INCORRECT_OR_UNCERTAIN_ANSWER loops back to
+// ASK_QUESTION).
+func TestUncertainAnswerLoopsBackToNewQuestionAfterTeaching(t *testing.T) {
+	s := session.New("Amaka")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("I don't know")
+	s.CheckAnswer()
+
+	s.Teach("Adding means combining two numbers into a total.")
+
+	err := s.AskQuestion("What is 2 + 3?", "5")
+	if err != nil {
+		t.Fatalf("looping back to a new question after teaching should be allowed, got error: %v", err)
+	}
+
+	if s.State() != session.WaitForAnswer {
+		t.Fatalf("expected state WaitForAnswer after looping back, got %v", s.State())
+	}
+
+	if s.HasAnswer() {
+		t.Fatal("the previous uncertain answer must not carry over into the retry")
+	}
+
+	if s.ConfirmationCount() != 0 {
+		t.Fatalf("confirmation count must reset on retry, got %d", s.ConfirmationCount())
+	}
+
+	s.SubmitAnswer("5")
+	correct := s.CheckAnswer()
+
+	if !correct {
+		t.Fatal("5 must be marked correct for 2 + 3")
+	}
+
+	if s.State() != session.AwaitingTransferCheck {
+		t.Fatalf("expected state AwaitingTransferCheck after correct retry answer, got %v", s.State())
+	}
+}
+
+// TestIncorrectAnswerDoesNotRequireTeaching is a regression guard for the
+// product decision just introduced: a wrong-but-attempted answer is NOT
+// treated the same as an uncertain one. Incorrect must still be allowed
+// to loop straight back to AskQuestion without an intervening Teach()
+// call.
+func TestIncorrectAnswerDoesNotRequireTeaching(t *testing.T) {
+	s := session.New("Amaka")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("9")
+	s.CheckAnswer()
+
+	if s.State() != session.Incorrect {
+		t.Fatalf("expected state Incorrect, got %v", s.State())
+	}
+
+	err := s.AskQuestion("What is 2 + 3?", "5")
+	if err != nil {
+		t.Fatalf("Incorrect must not require Teach() before looping back, got error: %v", err)
+	}
+}
+
+// TestTeachRecordsExplanation is a direct test of README §9 safeguard 6
+// (auditability) and §10 (learner state must track diagnostic
+// findings/concepts needing work): Teach() must retain the explanation it
+// was given, not just flip an internal flag, so it can later be surfaced
+// (e.g. to a parent/teacher view or an audit log).
+func TestTeachRecordsExplanation(t *testing.T) {
+	s := session.New("Amaka")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+	s.SubmitAnswer("I don't know")
+	s.CheckAnswer()
+
+	s.Teach("Adding means combining two numbers into a total.")
+
+	if got := s.LastTeaching(); got != "Adding means combining two numbers into a total." {
+		t.Fatalf("expected LastTeaching to return the given explanation, got %q", got)
+	}
+}
+
+// TestLastTeachingIsEmptyBeforeAnyTeaching confirms there is no stale or
+// placeholder value before Teach() has ever been called.
+func TestLastTeachingIsEmptyBeforeAnyTeaching(t *testing.T) {
+	s := session.New("Amaka")
+
+	if got := s.LastTeaching(); got != "" {
+		t.Fatalf("expected empty LastTeaching before any Teach() call, got %q", got)
+	}
+}
+
+// TestSubmitAnswerFromWrongLearnerIsRejected is a direct test of
+// Blueprint lesson #1 ("The AI needs explicit turn management") and
+// README §3, rule "One active respondent": "A learner's response must
+// never accidentally be attributed to another learner." A multi-learner
+// context (session.Roster) must track whose turn it is and reject an
+// answer submitted on behalf of a learner who is not currently active,
+// without affecting either learner's underlying Session state.
+func TestSubmitAnswerFromWrongLearnerIsRejected(t *testing.T) {
+	r := session.NewRoster("Amaka", "Bello")
+
+	amaka := r.Session("Amaka")
+	amaka.StartDiagnosis("What do you already know about addition?")
+	amaka.RecordDiagnosticResponse("I know how to add single digits")
+	amaka.AskQuestion("What is 7 + 3?", "10")
+
+	if r.ActiveLearner() != "Amaka" {
+		t.Fatalf("expected Amaka to be the active learner, got %s", r.ActiveLearner())
+	}
+
+	err := r.SubmitAnswerFor("Bello", "10")
+	if err == nil {
+		t.Fatal("submitting an answer for a learner who is not active must be rejected")
+	}
+
+	if amaka.HasAnswer() {
+		t.Fatal("Amaka's session must be unaffected by an answer submitted for Bello")
+	}
+
+	bello := r.Session("Bello")
+	if bello.HasAnswer() {
+		t.Fatal("Bello's session must not receive an answer that was rejected")
+	}
+
+	err = r.SubmitAnswerFor("Amaka", "10")
+	if err != nil {
+		t.Fatalf("submitting an answer for the active learner should be allowed, got error: %v", err)
+	}
+
+	if !amaka.HasAnswer() {
+		t.Fatal("Amaka's session should have the answer recorded once correctly attributed")
+	}
+}
+
+// TestSubmitAnswerForUnknownLearnerIsRejected confirms a Roster only
+// accepts answers from learners actually in the session, per README §3's
+// "one active respondent" rule extending naturally to "one of the
+// participating respondents."
+func TestSubmitAnswerForUnknownLearnerIsRejected(t *testing.T) {
+	r := session.NewRoster("Amaka", "Bello")
+
+	err := r.SubmitAnswerFor("Precious", "10")
+	if err == nil {
+		t.Fatal("submitting an answer for a learner not in the roster must be rejected")
+	}
+}
