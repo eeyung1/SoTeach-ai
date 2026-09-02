@@ -1,0 +1,513 @@
+PRODUCT OVERVIEW: AI-INTEGRATED LEARNING SYSTEM FOR NIGERIAN SCHOOLS
+=====================================================================
+
+Version: MVP Product Overview
+Purpose: Define what needs to be built and tested before launching the product.
+
+1. PRODUCT IDEA
+===============
+
+The product is an AI tutoring system designed for Nigerian school students.
+Its main difference from a generic AI tutor is that it should find out what a
+specific student does not understand before teaching.
+
+The core learning loop is:
+
+1. Diagnose what the student already knows.
+2. Identify the specific knowledge gap.
+3. Teach only the missing piece.
+4. Give the student a task or question to apply the idea.
+5. Verify real understanding.
+6. If a misunderstanding remains, teach that specific gap again.
+7. Record the result and move on.
+
+The first product should not attempt to teach every subject, every topic, and
+every age group.
+
+Recommended MVP scope:
+- Start with one subject.
+- Start with one grade band.
+- Start with a limited set of concepts.
+- Prove that the tutoring behavior works before building a large application.
+
+Mathematics is a strong candidate for the first MVP because answers can often
+be checked reliably and common misconceptions can be deliberately tested.
+
+2. THE MAIN PROBLEM THE PRODUCT SOLVES
+======================================
+
+Students can have different reasons for getting stuck on the same topic.
+
+For example, two students studying fractions may have different gaps:
+- One may not understand division.
+- Another may understand division but not understand what a fraction represents.
+
+The product should not automatically give both students the same long lesson.
+
+Instead, it should ask questions, inspect the student's responses, and locate
+the actual missing concept before deciding what to teach.
+
+The goal is not simply:
+"Ask a question and tell the student whether the answer is right."
+
+The goal is:
+"Find out why the student does or does not understand, then close that
+specific gap."
+
+3. CORE USER EXPERIENCE
+=======================
+
+A typical session should work like this:
+
+STEP 1: SELECT THE LEARNER
+The system identifies the active learner.
+
+Example:
+"Favour, it is your turn."
+
+STEP 2: ASK ONE QUESTION
+The tutor asks one clear question.
+
+Example:
+"Favour, what is 6 plus 1 plus 2?"
+
+STEP 3: WAIT
+The tutor must wait for the learner's response.
+It must not answer the question itself while waiting.
+
+STEP 4: EVALUATE
+The system checks the learner's answer accurately.
+
+Possible outcomes:
+- Correct
+- Incorrect
+- Partially correct
+- Unclear
+- No answer
+- Learner is unsure
+
+STEP 5: RESPOND APPROPRIATELY
+If correct:
+- Confirm briefly.
+- Request the required confirmation or understanding check.
+
+If incorrect:
+- Do not simply say "wrong" and immediately reveal the answer.
+- Ask a small diagnostic follow-up where appropriate.
+- Identify the likely misunderstanding.
+- Teach only the missing piece.
+- Give another opportunity to apply the concept.
+
+STEP 6: VERIFY
+A correct answer alone should not always mean mastery.
+
+Use a second check, preferably a slightly different question.
+
+Example:
+First question:
+"6 + 1 + 2 = ?"
+
+After the learner says 9, a transfer check could be:
+"What is 6 + 2 + 1?"
+
+This is stronger than merely asking the learner to repeat "9" several times.
+
+STEP 7: RECORD
+Record:
+- Learner
+- Subject
+- Topic
+- Question
+- Answer
+- Whether the answer was correct
+- Whether the learner demonstrated understanding
+- Identified gap
+- Whether the gap appears closed
+
+STEP 8: MOVE ON
+Only after the current interaction is complete should the system move to the
+next learner or question.
+
+4. INTERACTION RULES DISCOVERED FROM THE SAMPLE LESSON
+=======================================================
+
+The sample lesson revealed several important product rules.
+
+RULE 1: WAIT FOR THE STUDENT
+When the tutor asks a learner a question, it must allow that learner to answer.
+
+Do not:
+- Reveal the answer immediately.
+- Interrupt unnecessarily.
+- Continue to another question while an answer is pending.
+
+RULE 2: ONE ACTIVE RESPONDENT
+If the tutor calls Favour, the system should expect Favour's response.
+
+The product should track who is currently answering.
+
+RULE 3: CONFIRMATION COUNT MUST BE TRACKED
+The sample lesson requested two confirmations in total.
+
+The system should not accidentally ask for:
+- One confirmation when two are required, or
+- Three or four repetitions when only two are required.
+
+This requires explicit session state rather than relying on free-form
+conversation memory.
+
+RULE 4: DO NOT MARK AN ANSWER CORRECT UNTIL IT HAS BEEN CHECKED
+The sample lesson contained cases where the tutor initially accepted an
+incorrect answer.
+
+For subjects such as Mathematics, the system should use reliable answer
+checking where possible.
+
+RULE 5: CORRECT ANSWER IS NOT ALWAYS UNDERSTANDING
+The learner may:
+- Guess correctly.
+- Memorize an answer.
+- Copy another learner.
+- Repeat what the tutor said.
+
+The product should sometimes require explanation, application, or a similar
+but different question.
+
+RULE 6: HANDLE INTERRUPTIONS
+Real sessions include:
+- "Wait."
+- "Again."
+- "What was the question?"
+- Side conversations.
+- A learner leaving.
+- A parent or teacher giving instructions.
+
+The system must recover without losing:
+- The active learner.
+- The current question.
+- The current subject.
+- The confirmation count.
+- The learning state.
+
+RULE 7: MULTIPLE LEARNERS MAY SHARE A SESSION
+The sample lesson involved Favour, Delight, and references to Precious.
+
+The product should eventually support:
+- Multiple learners.
+- Individual turns.
+- Separate progress records.
+- Different difficulty levels.
+- The ability to skip or remove a learner temporarily.
+
+5. LEARNING ENGINE REQUIREMENTS
+===============================
+
+The product should contain a learning engine, not just a chatbot.
+
+The learning engine needs to answer:
+
+A. What does the student already know?
+B. What exactly does the student not understand?
+C. What should be taught next?
+D. How should it be explained for this student's age and level?
+E. What task will demonstrate application?
+F. Has the student actually understood the concept?
+
+Core stages:
+
+DIAGNOSE
+Ask questions or request an explanation before teaching.
+
+TEACH
+Explain only the identified gap.
+
+PRACTICE
+Give the student something to do.
+
+VERIFY
+Check whether the student's attempt reveals a remaining misunderstanding.
+
+LOOP
+If needed, return only to the specific missing piece.
+
+6. AGE AND LANGUAGE ADAPTATION
+==============================
+
+The product should not use one tutoring voice for all learners.
+
+Primary learners:
+- Short sentences.
+- Concrete examples.
+- Familiar objects and situations.
+- Minimal abstract terminology.
+
+Junior secondary learners:
+- Introduce proper terminology.
+- Explain each new term in plain language.
+- Use progressively more complex questions.
+
+Senior secondary learners:
+- Use curriculum vocabulary.
+- Support multi-step reasoning.
+- Eventually support exam-style questions.
+
+7. SUBJECT STRATEGY
+===================
+
+Do not begin by supporting every subject.
+
+Recommended sequence:
+
+PHASE 1
+One subject, one grade band, limited concepts.
+
+PHASE 2
+Expand to additional concepts and related core subjects.
+
+PHASE 3
+Broaden toward wider curriculum coverage after the tutoring system has proven
+it can remain accurate and personalized.
+
+For the first MVP, Mathematics is recommended as a practical testing subject.
+
+8. RELIABILITY AND SAFETY REQUIREMENTS
+======================================
+
+The biggest product risk is false confidence.
+
+A student may feel confident because the AI sounds confident even when:
+- The answer is wrong.
+- The explanation is wrong.
+- The student has memorized without understanding.
+
+Therefore, the product needs safeguards.
+
+Required safeguards:
+
+1. Reliable answer checking
+Use deterministic or highly reliable checking where possible.
+
+2. Uncertainty behavior
+The system should not pretend to know when it is uncertain.
+
+3. Understanding verification
+Use follow-up questions and application.
+
+4. Periodic re-checking
+Return to previously learned concepts later to see whether learning lasted.
+
+5. Parent/teacher visibility
+Consider a simple view showing:
+- Gaps found.
+- Topics practiced.
+- Concepts apparently mastered.
+- Areas requiring attention.
+
+6. Auditability
+Store enough interaction information to investigate when the AI gives bad
+feedback.
+
+9. MULTI-LEARNER SESSION ENGINE
+===============================
+
+If group tutoring is included, the application needs explicit state management.
+
+Suggested state flow:
+
+1. SELECT_LEARNER
+2. SELECT_SUBJECT
+3. SELECT_TOPIC
+4. DIAGNOSE
+5. ASK_QUESTION
+6. WAIT_FOR_ANSWER
+7. CHECK_ANSWER
+8. HANDLE_INCORRECT_OR_UNCERTAIN_ANSWER
+9. REQUEST_CONFIRMATION_OR_TRANSFER_CHECK
+10. WAIT_FOR_RESPONSE
+11. VERIFY_UNDERSTANDING
+12. RECORD_RESULT
+13. MOVE_TO_NEXT_LEARNER_OR_QUESTION
+
+The system should preserve this state even when the conversation becomes messy.
+
+10. DATA TO TRACK FOR EACH LEARNER
+==================================
+
+Each learner should eventually have an individual profile containing:
+
+- Name or learner identifier
+- Grade band
+- Subjects
+- Topics studied
+- Concepts mastered
+- Concepts needing work
+- Common mistakes
+- Diagnostic findings
+- Recent answers
+- Current difficulty level
+- Session history
+- Last unfinished lesson
+- Review concepts due for re-checking
+
+11. MVP FEATURES
+================
+
+The first version should focus on proving the learning behavior.
+
+MVP Feature 1: Learner selection
+The tutor knows who it is speaking to.
+
+MVP Feature 2: One-question-at-a-time interaction
+No uncontrolled streams of questions.
+
+MVP Feature 3: Answer waiting
+The tutor waits for a response.
+
+MVP Feature 4: Reliable answer evaluation
+Especially for Mathematics.
+
+MVP Feature 5: Diagnostic follow-ups
+The tutor can investigate why an answer was wrong.
+
+MVP Feature 6: Targeted teaching
+Teach the identified gap rather than giving a generic lesson.
+
+MVP Feature 7: Application and verification
+Test whether understanding transfers to another example.
+
+MVP Feature 8: Progress recording
+Store learning results per learner.
+
+MVP Feature 9: Resume support
+Allow an interrupted session to continue without starting over.
+
+MVP Feature 10: Basic multi-learner support
+Only if manual testing shows group tutoring is an important use case.
+
+12. WHAT SHOULD NOT BE BUILT FIRST
+==================================
+
+Do not initially spend time building:
+
+- Every school subject.
+- Every Nigerian curriculum topic.
+- Complex animations.
+- Heavy video features.
+- A large social platform.
+- Advanced gamification.
+- Full institutional dashboards.
+- Large infrastructure before testing the tutoring logic.
+
+The first question to answer is:
+
+"Can the AI reliably diagnose a real knowledge gap and help a student close it
+without creating false confidence?"
+
+13. TESTING PLAN BEFORE FULL DEVELOPMENT
+========================================
+
+STEP 1: WRITE THE TUTORING PROTOCOL
+Create a strict system prompt or tutoring specification.
+
+It should define:
+- Turn-taking.
+- Waiting behavior.
+- Answer checking.
+- Repetition/confirmation rules.
+- Diagnostic behavior.
+- Teaching behavior.
+- Verification behavior.
+- Handling of multiple learners.
+- Handling of interruptions.
+
+STEP 2: RUN MANUAL SESSIONS
+Test with real learners before building an application.
+
+Run sessions across:
+- Correct answers.
+- Incorrect answers.
+- Guesses.
+- "I don't know."
+- Repeated questions.
+- Interruptions.
+- Multiple learners.
+- Learners of different ability levels.
+
+STEP 3: SCORE THE TUTOR
+For every session, measure:
+
+- Did it wait?
+- Did it identify the active learner correctly?
+- Did it judge answers correctly?
+- Did it follow the confirmation rule?
+- Did it diagnose the actual problem?
+- Did it teach only what was missing?
+- Did the learner demonstrate understanding afterward?
+- Did it lose track during interruptions?
+
+STEP 4: FIND FAILURE PATTERNS
+Do not focus only on successful sessions.
+
+Collect failures such as:
+- Wrong answer marked correct.
+- Correct answer marked wrong.
+- Answer revealed too early.
+- Lost learner identity.
+- Lost question.
+- Repeated too many times.
+- Failed to detect guessing.
+- Gave an explanation unrelated to the real gap.
+
+STEP 5: IMPROVE THE TUTORING PROTOCOL
+Fix the protocol and test again.
+
+STEP 6: BUILD A SMALL INTERFACE
+Only after repeated manual testing shows reliable behavior.
+
+14. SUCCESS CRITERIA FOR THE MVP
+================================
+
+The MVP should be considered promising if it can consistently:
+
+1. Wait for the learner.
+2. Track whose turn it is.
+3. Check answers accurately.
+4. Avoid confidently approving wrong answers.
+5. Identify at least some genuine misconceptions.
+6. Give targeted explanations.
+7. Show evidence of understanding beyond answer repetition.
+8. Maintain separate learner records.
+9. Recover from normal interruptions.
+10. Help students improve on a second attempt.
+
+15. PRODUCT POSITIONING
+=======================
+
+The core positioning should not simply be:
+
+"We are another AI tutor."
+
+The stronger product idea is:
+
+"Most tools start teaching immediately. This tutor first finds out what a
+specific student actually does not understand."
+
+That claim should only be used if testing proves the diagnostic behavior is
+real and reliable.
+
+16. CURRENT RECOMMENDED NEXT ACTION
+===================================
+
+Before building the full product:
+
+1. Use sample_lesson.txt as a real interaction test case.
+2. Convert the interaction rules into a strict tutoring protocol.
+3. Choose one Mathematics topic and one learner age band.
+4. Run repeated manual tests with real students.
+5. Record failures.
+6. Measure whether the system detects understanding rather than just correct
+   answers.
+7. Improve the protocol.
+8. Only then design and build the MVP application.
+
+END OF PRODUCT OVERVIEW

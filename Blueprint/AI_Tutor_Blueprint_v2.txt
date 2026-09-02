@@ -1,0 +1,260 @@
+AI-INTEGRATED LEARNING SYSTEM FOR NIGERIAN SCHOOLS
+Blueprint v0.2 — Concept Stage, Viability Analysis Added
+Author: Eeyung Emmanuel
+Date: August 2026
+
+===================================================
+1. THE PROBLEM
+===================================================
+Most Nigerian secondary and upper-primary students learn from teachers who
+are themselves not always well-informed on the concepts they are teaching.
+This creates a compounding gap: the student doesn't understand the topic,
+and the person meant to fix that misunderstanding often can't, either.
+
+Existing AI tutoring tools (e.g. Metaschool AI, GRIO, the World Bank/Microsoft
+Copilot pilot in Edo State) have already proven that AI tutoring works in
+this exact context — a 2024 Edo State pilot measured close to two years of
+learning gain in six weeks. So the core idea is validated. This blueprint is
+not trying to prove AI tutoring works. It's trying to build a version that:
+  (a) diagnoses what a student actually knows before teaching anything,
+  (b) compensates for teacher knowledge gaps, not just student ones, and
+  (c) survives real Nigerian connectivity and data conditions.
+
+===================================================
+2. TARGET USERS
+===================================================
+- Primary 4 – Primary 6 (roughly ages 9–11)
+- JSS1 – JSS3 (Junior Secondary, roughly ages 12–14)
+- SSS1 – SSS3 (Senior Secondary, roughly ages 15–17)
+
+These are three very different cognitive and literacy levels. The system
+must NOT use one voice for all of them. Language complexity, sentence
+length, and abstraction level need to scale by band. A concept explained to
+a Primary 5 student and the same concept explained to an SSS3 student should
+read like two different tutors, even if the underlying idea is the same.
+
+===================================================
+3. SCOPE OF SUBJECT MATTER
+===================================================
+"Should be able to explain any topic" — for this to be honest rather than
+aspirational, the system needs to be subject-AGNOSTIC in method, not
+subject-agnostic in content accuracy. The interaction pattern (diagnose,
+fill gap, hands-on practice) is reusable across any subject. The accuracy
+of what's taught still depends on the underlying model's actual knowledge
+of that specific topic, which varies by subject and curriculum depth.
+
+Realistic phased subject coverage:
+  Phase 1 (proof of concept): One subject you know deeply from your own
+  teaching background — Mathematics or Physics — at one band (start with
+  JSS or SSS, since you have direct teaching experience there).
+  Phase 2: Expand to Basic Science / Core subjects across bands.
+  Phase 3: Broaden to the full NERDC/WAEC curriculum spread.
+
+Do not attempt "any topic, any band" as the first build. That's the
+long-term claim, not the starting scope.
+
+===================================================
+4. CORE INTERACTION PATTERN
+===================================================
+This reuses the same Socratic, one-concept-at-a-time pattern from your
+Engineering Mentor Prompt (already validated, 9.6/10, used across your
+cohort) — retargeted from software concepts to school curriculum concepts.
+
+Four-stage loop per concept:
+
+  STAGE 1 — DIAGNOSE
+  Ask the student to explain, in their own words, what they already know
+  about the topic before teaching anything. Use their answer to locate the
+  actual gap, not an assumed one. Two students asking about "fractions"
+  may have completely different gaps — one may not understand division as
+  a concept at all; another may understand division but not why a fraction
+  represents "the same thing done differently."
+
+  STAGE 2 — FILL THE SPECIFIC GAP
+  Teach only the piece that's actually missing, using an explanation style
+  suited to the student's grade band. Avoid re-teaching what the student
+  already demonstrated they know in Stage 1.
+
+  STAGE 3 — HANDS-ON APPLICATION
+  Give the student a small, concrete task or problem to apply the concept
+  themselves, not just observe an explanation. This is the "hands-on
+  learning" piece — the model should not consider a concept taught until
+  the student has done something with it.
+
+  STAGE 4 — VERIFY AND CLOSE THE LOOP
+  Check whether the application attempt reveals a remaining
+  misunderstanding. If yes, loop back to Stage 2 for that specific piece
+  only. If no, briefly confirm mastery and stop — do not over-explain a
+  concept the student has already shown they understand.
+
+===================================================
+5. AGE-BAND CALIBRATION RULES
+===================================================
+- Primary 4–6: short sentences, concrete real-world analogies (objects,
+  money, food, familiar Nigerian contexts), no abstract terminology without
+  immediately grounding it in an example.
+- JSS1–3: can introduce proper terminology, but must still pair every new
+  term with a plain-language explanation the first time it's used.
+- SSS1–3: can use full technical/curriculum vocabulary, multi-step
+  reasoning, and reference exam-style question formats (WAEC/NECO/JAMB).
+
+===================================================
+6. DESIGN CONSTRAINT: LOW-DATA, LOW-POWER FIRST
+===================================================
+This is the one advantage a well-funded competitor is less likely to have
+prioritized: you are currently living the exact conditions the target
+users face — unreliable power, expensive or scarce data, phone-only access.
+Design requirements that follow directly from that:
+  - Text-first interaction. No reliance on images, audio, or video unless
+    explicitly necessary for the concept (e.g. a diagram-dependent topic).
+  - Short exchanges. A student should be able to complete one full
+    diagnose-teach-practice-verify loop in a handful of short messages,
+    not a long continuous session, so it survives a spotty connection.
+  - Resumable sessions. A student should be able to stop mid-concept and
+    pick back up without repeating the diagnostic stage.
+
+===================================================
+7. KNOWN RISK — DO NOT SKIP
+===================================================
+Research on the Edo State pilot explicitly noted that AI tutoring used
+WITHOUT teacher guidance can create false confidence in students — the
+tool can make a student feel they understand something when they don't,
+if there's no human checkpoint. Given the whole premise of this system is
+partly to compensate for teachers who may not catch that themselves, this
+risk needs a real answer, not a footnote. Two options to weigh later:
+  (a) Build in a lightweight "teacher view" — a simple summary of what
+      gaps were found and closed per student, so a teacher or parent can
+      spot-check even without deep subject knowledge themselves.
+  (b) Have the system periodically ask the student to re-explain a concept
+      days later, to catch false confidence before it hardens.
+This should not be treated as optional polish — it's a core design
+question, because it's the exact failure mode this system is most likely
+to hit at scale.
+
+===================================================
+8. VIABILITY ANALYSIS (added — see full reasoning discussed separately)
+===================================================
+
+8.1 EVIDENCE VALIDATION — CONFIRMED, WITH ONE IMPORTANT GAP
+The Edo State pilot statistic is accurate: independently verified at
+roughly 0.29-0.31 standard deviations effect size, described by World Bank
+researchers as outperforming ~80% of documented education interventions.
+This is real, strong evidence that AI tutoring works in a Nigerian context.
+
+THE GAP NOT TO GLOSS OVER: every version of that proven pilot involved
+teachers actively guiding structured, in-lab sessions — not a student using
+a tool independently. Researchers (including Wharton's Ethan Mollick)
+explicitly flagged that AI tutoring WITHOUT teacher guidance can create
+false confidence rather than real learning. This means the evidence cited
+in Section 1 validates "AI tutoring + a present, reliable teacher" — it
+does NOT yet validate "AI tutoring compensating for an unreliable or
+absent teacher," which is this product's actual core premise. That gap is
+not proven by the pilot — it is the open question this product is betting
+on. Section 7's mitigation ideas (teacher view, periodic re-explanation
+checks) are the right instinct; treat closing this specific gap as the
+primary goal of the Step 2 manual test (Section 9), not a secondary detail.
+
+8.2 COMPETITIVE LANDSCAPE — REAL, BUT DIFFERENTIATED
+Metaschool AI is a real, operating Nigerian competitor: "on-demand NECO
+revision, JAMB UTME readiness, topic-by-topic analytics and live mentors
+for every subject." This is a BREADTH-first product (every subject, every
+exam, human mentors layered on AI). This blueprint's actual bet is
+DEPTH-first: one subject, one band, a genuine diagnose-before-teach loop,
+no human mentor layer required. This is a real, defensible point of
+differentiation, not direct head-on competition — but it means this
+product should never be pitched as "we're an AI tutor too." The pitch is:
+"most tools teach; this one finds out what a specific student actually
+doesn't understand before saying anything." Keep this distinction explicit
+in any future pitch, grant application, or school conversation.
+
+8.3 PROBLEM VALIDATION — PASSES THE CORE TEST
+Private extra lessons ("afternoon lessons"), past-question workbooks, and
+home tutors are long-standing, widely-used Nigerian workarounds for this
+exact problem. Parents and students already spend real money trying to
+close this gap. This is the same validation pattern that separated
+Moniepoint's real success from what3words'/Google Plus Codes' failure to
+gain adoption (see the separate Product Validation Gut Check reference) —
+this product removes friction from and reduces the cost of something
+people already do and already pay for, rather than asking anyone to adopt
+new behavior. This is a genuine positive signal, not just hopeful framing.
+
+8.4 STILL OPEN — WHO PAYS (determines the shape of everything else)
+Three real, different paths, not yet decided:
+  - Schools pay (B2B) — slower sales cycle, needs institutional buy-in,
+    but stickier revenue and higher per-deal value.
+  - Parents pay directly (B2C) — faster to test, but a harder, more
+    crowded consumer sale competing directly with Metaschool AI and
+    private tutors on price and trust.
+  - NGO/government sponsorship (grant-funded) — no direct monetization
+    pressure, but dependent on programs and timelines outside your
+    control, and typically slower to secure.
+This should be decided intentionally, not by default, since it changes
+build priorities (a school-facing product needs the "teacher view" from
+Section 7 far more urgently than a pure consumer product would).
+
+8.5 FUNDING/ECOSYSTEM CONTEXT (informational, not a current action item)
+Meta and Nigeria's Federal Ministry of Communications, Innovation and
+Digital Economy launched "AI Academy Nigeria" in August 2026, including a
+Startup Pitchathon offering up to $5,000 in equity-free funding for
+early-stage Nigerian AI ideas/products — a real, concrete example of
+non-dilutive funding interest forming around exactly this category of
+product. That specific application window closed August 21, 2026 (link:
+https://events.atmeta.com/aiacademynigerialaunch). Worth checking that
+same link periodically for future cohorts or the program's other tracks
+(AI Skills Development, Developer Bootcamp), rather than treating this as
+a one-time closed door — but not an immediate action item at concept
+stage.
+
+8.6 OVERALL VIABILITY READ
+Stronger and better-grounded than most ideas evaluated so far: real
+validated problem, real existing willingness to pay, genuine
+differentiation from the nearest competitor, and a founder with direct,
+non-transferable subject-matter teaching experience. The one thing not yet
+proven is the thing the product depends on most — whether AI alone can
+safely close a knowledge gap without a present teacher, without drifting
+into false confidence. This is cheap to test (Section 9, Steps 1-2) before
+any infrastructure is built, and should be treated as the make-or-break
+question, not a footnote.
+
+===================================================
+9. BUILD SEQUENCE (MATCHES YOUR EXISTING PLAYBOOK)
+===================================================
+Same pattern as the three-phase page-building agent system — prove the
+prompt before building any infrastructure around it.
+
+  Step 1: Write the actual diagnostic-mentor system prompt for ONE
+  concept, in ONE subject, at ONE grade band. No app, no code.
+  Step 2: Manually run it — on yourself, a sibling, a student you have
+  access to, or even a cohort-mate's younger relative. Does it actually
+  diagnose the real gap, or does it just lecture? Specifically test
+  whether it holds up WITHOUT a teacher present guiding the session (see
+  Section 8.1) — this is the single most important thing to learn from
+  this step, more important than whether the explanations are good.
+  Step 3: Only after Step 2 shows real signal, consider wrapping it in an
+  interface (could reuse your existing Multi-Agent Orchestrator scaffolding
+  rather than building new infrastructure from scratch).
+
+===================================================
+10. OPEN QUESTIONS (unresolved — revisit later)
+===================================================
+- Curriculum alignment: NERDC scheme of work vs. WAEC/NECO syllabus —
+  which one anchors "correctness" for a given topic?
+- Who is the paying or sponsoring user (see Section 8.4 for the three
+  real options) — schools, parents, NGOs, or the student directly?
+- How does the system handle a topic it genuinely doesn't know well —
+  does it say so, or is there a risk of confident wrong answers to a
+  9-year-old who has no way to catch the error?
+- Does the product need to prove it works WITHOUT teacher guidance to
+  fulfill its own premise (Section 8.1), and if Step 2 testing shows it
+  can't reliably do that, does the product pivot toward a teacher-assisted
+  model instead (closer to the proven Edo pilot shape) rather than a fully
+  independent one?
+
+===================================================
+11. STATUS
+===================================================
+Concept stage. Not started. Revisit once current priorities (payment,
+laptop, internship outcome) are resolved. This file exists so the thinking
+isn't lost in the meantime — not as a commitment to start building now.
+Viability analysis (Section 8) added to sharpen what to test first, once
+work resumes — does not change the decision to wait.

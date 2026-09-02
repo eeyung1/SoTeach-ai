@@ -1,0 +1,143 @@
+SAMPLE AI TUTOR LESSON
+======================
+
+Purpose
+-------
+This file contains a cleaned record of the tutoring interaction used to explore
+the proposed AI tutor product. It preserves the important interaction patterns,
+corrections, and failures observed during the lesson.
+
+PART 1: MATHEMATICS
+===================
+
+The tutor practiced simple addition with learners referred to as Favour and
+Delight.
+
+Example questions and answers:
+- 3 + 4 = 7
+- 6 + 2 = 8
+- 9 + 1 = 10
+- 5 + 2 = 7
+- 7 + 3 was initially treated as 11, but was later corrected to 10.
+- 4 + 7 + 9 = 20
+- 2 + 5 + 1 = 8
+- 3 + 4 + 2 was first described as 10, then correctly corrected to 9.
+- 6 + 1 + 2 = 9
+- 4 + 3 + 1 = 8
+- 5 + 2 + 0 = 7
+
+IMPORTANT INTERACTION RULE DISCOVERED
+------------------------------------
+The tutor was corrected with the following instruction:
+
+"When you ask the equation, wait for them to answer."
+
+The desired pattern was also clarified:
+- Ask one learner a question.
+- Allow that learner time to answer.
+- Do not reveal or supply the answer before the learner responds.
+- After the learner gives an answer, ask for the answer again.
+- The learner should confirm the answer two times in total before moving on.
+- Do not ask for the answer three times.
+- Then move to the next question and/or next learner.
+
+Example:
+Tutor: "Favour, what is 2 + 5 + 1?"
+Learner: "Eight, I think."
+Tutor: "Correct. Say 8 again."
+Learner: "Eight."
+Tutor: Move on to the next learner.
+
+OBSERVED PROBLEMS
+-----------------
+1. Incorrect validation:
+   The tutor sometimes marked an answer correct when it was wrong.
+
+2. Inconsistent arithmetic:
+   "7 + 3 = 11" was initially accepted as correct before being corrected to 10.
+
+3. Premature responses:
+   The tutor sometimes answered or continued before properly waiting for the
+   learner.
+
+4. Repetition confusion:
+   The desired rule was two confirmations, but the tutor occasionally asked for
+   unnecessary additional repetitions.
+
+5. Answer checking was not enough:
+   A learner could repeat the correct answer without demonstrating that they
+   understood the concept or method.
+
+PART 2: CHRISTIAN RELIGIOUS STUDIES
+===================================
+
+Questions used included:
+- Who created the world? Answer: God.
+- Who was the first man? Answer: Adam.
+- Who built the ark to save his family and the animals from the flood?
+  Answer: Noah.
+- Who led the Israelites out of Egypt? Answer: Moses.
+- Who defeated Goliath? Answer: David.
+- How long did it rain during Noah's flood? Answer given: forty days and
+  forty nights.
+- Who was swallowed by a big fish? Answer: Jonah.
+- Who was the mother of Jesus? Answer: Mary.
+
+The same turn-taking rule applies:
+- Call a learner by name.
+- Ask the question.
+- Allow the learner to answer without interruption.
+- Evaluate the answer.
+- Request one confirmation when appropriate.
+- Move on after the required confirmations.
+- Do not supply the answer before giving the learner a fair opportunity.
+
+MULTI-LEARNER SESSION BEHAVIOR
+==============================
+
+The lesson involved more than one learner, including Favour, Delight, and a
+possible additional learner, Precious.
+
+The product may therefore need to support:
+- Multiple named learners in one session.
+- Individual turns.
+- Knowing whose turn it is.
+- Preventing another learner from being treated as the respondent.
+- Separate progress for each learner.
+- Handling interruptions and side comments.
+- Moving from one learner to another cleanly.
+
+CORE PRODUCT LESSONS FROM THIS SESSION
+======================================
+
+1. The AI needs explicit turn management.
+2. The AI must wait for an answer before evaluating.
+3. Mathematical answers should be checked reliably.
+4. The AI should not confidently approve an answer unless it has verified it.
+5. Repetition rules must be tracked by session state.
+6. A correct final answer should not automatically mean mastery.
+7. The tutor should eventually ask follow-up questions that test understanding
+   or transfer, not merely repetition.
+8. Each learner should have an individual learning record.
+9. The system must handle subject switching, such as Mathematics to Christian
+   Religious Studies.
+10. Interruptions should not cause the tutor to lose track of the active learner
+    or the current question.
+
+RECOMMENDED STATE FLOW FOR A FUTURE PROTOTYPE
+=============================================
+
+1. SELECT_LEARNER
+2. ASK_QUESTION
+3. WAIT_FOR_ANSWER
+4. CHECK_ANSWER
+5. HANDLE_INCORRECT_OR_UNCERTAIN_ANSWER
+6. REQUEST_CONFIRMATION
+7. WAIT_FOR_CONFIRMATION
+8. VERIFY_UNDERSTANDING
+9. RECORD_RESULT
+10. MOVE_TO_NEXT_LEARNER_OR_QUESTION
+
+This lesson is a prototype observation record. It is intended to help identify
+the behavioral requirements for an AI tutoring product before building the full
+application.
