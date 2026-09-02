@@ -1063,3 +1063,107 @@ func TestSwitchingSubjectResetsTopicSelection(t *testing.T) {
 		t.Fatalf("switching subjects must clear the previously selected topic, got %q", s.Topic())
 	}
 }
+
+// TestResumingSessionDoesNotRepeatCompletedDiagnosis is a direct test of
+// README §6: "must support resuming an unfinished session without
+// repeating the diagnostic stage from scratch." If an interruption or
+// resumption path re-invokes StartDiagnosis on a session whose diagnosis
+// is already complete for the current subject/topic, it must not discard
+// the existing diagnostic finding or any in-progress question state.
+func TestResumingSessionDoesNotRepeatCompletedDiagnosis(t *testing.T) {
+	s := session.New("Amaka")
+	s.SelectSubject("Mathematics")
+	s.SelectTopic("Addition")
+	s.StartDiagnosis("What do you already know about addition?")
+	s.RecordDiagnosticResponse("I know how to add single digits")
+	s.AskQuestion("What is 7 + 3?", "10")
+
+	// Simulate an interruption/resumption path re-entering diagnosis.
+	s.StartDiagnosis("What do you already know about addition?")
+
+	if !s.DiagnosisComplete() {
+		t.Fatal("resuming must not re-open diagnosis that was already complete")
+	}
+
+	if s.DiagnosticFinding() != "I know how to add single digits" {
+		t.Fatalf("resuming must not discard the recorded diagnostic finding, got %q", s.DiagnosticFinding())
+	}
+
+	if s.State() != session.WaitForAnswer {
+		t.Fatalf("resuming must not disturb in-progress state, got %v", s.State())
+	}
+
+	if s.CurrentQuestion() != "What is 7 + 3?" {
+		t.Fatalf("resuming must not clear the pending question, got %q", s.CurrentQuestion())
+	}
+}
+
+// TestStartDiagnosisStillWorksWhenNotYetComplete confirms the resumption
+// guard only protects an already-completed diagnosis — starting
+// diagnosis for the first time, or restarting it while still mid-
+// diagnosis (not yet complete), must still work normally.
+func TestStartDiagnosisStillWorksWhenNotYetComplete(t *testing.T) {
+	s := session.New("Amaka")
+	s.SelectSubject("Mathematics")
+	s.SelectTopic("Addition")
+	s.StartDiagnosis("What do you already know about addition?")
+
+	if s.State() != session.Diagnosing {
+		t.Fatalf("expected state Diagnosing, got %v", s.State())
+	}
+
+	if s.DiagnosisComplete() {
+		t.Fatal("diagnosis must not be marked complete before RecordDiagnosticResponse is called")
+	}
+}
+
+// TestGradeBandDefaultsEmpty confirms a new session has no grade band
+// until SetGradeBand is called (README §10, per-learner data must
+// include grade band).
+func TestGradeBandDefaultsEmpty(t *testing.T) {
+	s := session.New("Amaka")
+	if s.GradeBand() != "" {
+		t.Fatalf("expected empty grade band before SetGradeBand, got %q", s.GradeBand())
+	}
+}
+
+// TestSetGradeBandAcceptsOnlyDefinedBands enforces README §4's
+// non-negotiable age-band calibration requirement deterministically:
+// only the three defined bands (Primary 4-6, JSS1-3, SSS1-3) are valid.
+// An undefined band must be rejected rather than silently accepted,
+// since age calibration is a safety requirement, not cosmetic.
+func TestSetGradeBandAcceptsOnlyDefinedBands(t *testing.T) {
+	s := session.New("Amaka")
+
+	if err := s.SetGradeBand("JSS1-3"); err != nil {
+		t.Fatalf("expected a defined grade band to be accepted, got error: %v", err)
+	}
+	if s.GradeBand() != "JSS1-3" {
+		t.Fatalf("expected grade band to be set, got %q", s.GradeBand())
+	}
+
+	err := s.SetGradeBand("Grade 9")
+	if err == nil {
+		t.Fatal("expected an undefined grade band to be rejected")
+	}
+	if s.GradeBand() != "JSS1-3" {
+		t.Fatalf("a rejected grade band must not overwrite the existing one, got %q", s.GradeBand())
+	}
+}
+
+// TestGradeBandSurvivesSubjectAndTopicSwitch confirms grade band is
+// learner-level state (README §10), not subject- or topic-level, so it
+// must not be cleared by SelectSubject or SelectTopic the way diagnosis
+// and pending question state are.
+func TestGradeBandSurvivesSubjectAndTopicSwitch(t *testing.T) {
+	s := session.New("Amaka")
+	s.SetGradeBand("Primary 4-6")
+
+	s.SelectSubject("Mathematics")
+	s.SelectTopic("Addition")
+	s.SelectSubject("Christian Religious Studies")
+
+	if s.GradeBand() != "Primary 4-6" {
+		t.Fatalf("grade band must survive subject/topic switches, got %q", s.GradeBand())
+	}
+}

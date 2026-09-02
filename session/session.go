@@ -55,6 +55,19 @@ var ErrReteachingRequired = errors.New("must teach the gap before asking another
 // of it).
 var ErrSubjectNotSelected = errors.New("a subject must be selected before a topic can be selected")
 
+// validGradeBands are the three age bands defined by README §4 (age-band
+// calibration is a non-negotiable product and safety requirement, not
+// cosmetic) — Primary 4-6, JSS1-3, SSS1-3. No other value is accepted.
+var validGradeBands = map[string]bool{
+	"Primary 4-6": true,
+	"JSS1-3":      true,
+	"SSS1-3":      true,
+}
+
+// ErrInvalidGradeBand is returned when SetGradeBand is called with a
+// value outside the three defined age bands.
+var ErrInvalidGradeBand = errors.New("grade band must be one of: Primary 4-6, JSS1-3, SSS1-3")
+
 // Session holds the minimal state needed to satisfy the "wait for the
 // student" and "never mark correct without checking" rules (README §3).
 //
@@ -64,6 +77,7 @@ var ErrSubjectNotSelected = errors.New("a subject must be selected before a topi
 // or shares state across learners.
 type Session struct {
 	learnerName          string
+	gradeBand            string
 	subject              string
 	topic                string
 	state                State
@@ -91,6 +105,26 @@ func New(learnerName string) *Session {
 // LearnerName returns the name of the learner this session belongs to.
 func (s *Session) LearnerName() string {
 	return s.learnerName
+}
+
+// GradeBand returns the learner's currently set age/grade band, or the
+// empty string if none has been set yet.
+func (s *Session) GradeBand() string {
+	return s.gradeBand
+}
+
+// SetGradeBand sets the learner's age/grade band (README §4, §10). This
+// is learner-level state, not subject- or topic-level: it is deliberately
+// untouched by SelectSubject/SelectTopic, unlike diagnosis and pending
+// question state. Only the three defined bands are accepted; an
+// undefined value is rejected and does not overwrite whatever was
+// already set.
+func (s *Session) SetGradeBand(band string) error {
+	if !validGradeBands[band] {
+		return ErrInvalidGradeBand
+	}
+	s.gradeBand = band
+	return nil
 }
 
 // Subject returns the currently selected subject, or the empty string if
@@ -194,7 +228,19 @@ func (s *Session) restoreMasteryForCurrentSelection() {
 // StartDiagnosis begins README §2 Stage 1 (DIAGNOSE): asking the learner
 // to explain what they already know before any teaching happens. This
 // must happen before TEACH, not be skipped or assumed.
+//
+// If diagnosis for the current subject/topic is already complete,
+// StartDiagnosis is a no-op (README §6: resuming an unfinished session
+// must not repeat the diagnostic stage from scratch). An interruption or
+// resumption path may re-invoke StartDiagnosis without realizing
+// diagnosis already happened; this guard protects the existing
+// diagnostic finding and any in-progress question state from being
+// silently discarded.
 func (s *Session) StartDiagnosis(prompt string) {
+	if s.diagnosisComplete {
+		return
+	}
+
 	s.diagnosticPrompt = prompt
 	s.diagnosisComplete = false
 	s.state = Diagnosing
