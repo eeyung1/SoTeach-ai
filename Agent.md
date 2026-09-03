@@ -1651,7 +1651,12 @@ Safety-critical controls belong in deterministic application logic wherever poss
 
 # 50. Current Development State Must Be Preserved
 
-At the time this instruction was established, the repository had reached the following verified state:
+When this section was first written, the codebase was pinned at a single RED
+test (`TestTutorWaitsForLearnerAnswer`, "tutoring engine not implemented").
+That behavior has since been implemented and verified, so this snapshot is
+updated rather than appended. If you are unsure where the project stands,
+read this section first, then confirm against `README.md` and
+`workingReadme.md` (which carry matching status lines).
 
 ```text
 Go module:
@@ -1660,34 +1665,46 @@ soteach
 Go version:
 1.22.2
 
-Test directory:
-tests/
+Implementation layout:
+ai/       — AIProvider boundary, DiagnosticResult + validation (Agent.md §36-44)
+session/  — state machine, interaction rules, per-learner Session + Roster
+tutor/    — thin wiring of AIProvider into Session (Agent.md §42)
+tests/    — 55 behavior tests, all passing via `go test ./...`
 
-Test file:
-tests/tutoring_test.go
-
-Current test:
-TestTutorWaitsForLearnerAnswer
+Verified behavior (tutoring engine, in-memory, headless):
+- Wait-for-learner; no advancing while an answer is pending (README §3)
+- DIAGNOSE → TEACH → PRACTICE → VERIFY loop; no stage skippable (README §2)
+- Deterministic answer checking; uncertain answers distinguished (README §8.4, §9)
+- Transfer/verification question required before mastery (README §3, "Correct ≠ understanding")
+- Exact confirmation count (max two) tracked as explicit state (README §8.3)
+- One active respondent; learner state kept separate (README §3)
+- Subject/topic selection nested per README §6; mastery per subject+topic and
+  preserved across switches; unverified progress discarded on switch
+- Session resumption without repeating completed diagnosis (README §6)
+- Grade-band validation: only Primary 4-6, JSS1-3, SSS1-3 (README §4, §10)
+- AI-validated diagnosis: malformed results rejected, provider failure leaves
+  the session untouched (Agent.md §40-42)
 ```
 
-The test was deliberately executed before the tutoring engine existed.
+Remaining within Stage 1 (Agent.md §25 / workingReadme.md §8, Stage 1):
 
-Confirmed result:
+- Session persistence (Agent.md §20 — behavior is proven in memory; persisting it is next)
+- The API boundary and HTTP layer (Agent.md §19)
 
-```text
---- FAIL: TestTutorWaitsForLearnerAnswer
-    tutoring_test.go:6: tutoring engine not implemented
-FAIL
-FAIL    soteach/tests
-```
+Open, non-code item:
 
-This is the correct RED state.
+- Real-learner protocol validation (workingReadme.md §8, Stage 0) was not
+  executed as a pre-code gate and remains required before any client is built.
 
-The next task must address this behavior.
+The next task:
+
+Finish Stage 1's remaining pieces — expose the proven engine through the API
+boundary and add session persistence — using the same test-first cycle (§3).
+Follow Agent.md §20's sequencing: prove the API/persistence behavior in memory
+through domain tests before introducing PostgreSQL.
 
 Do not skip directly to:
 
-* PostgreSQL
 * Web UI
 * Mobile
 * Authentication
@@ -1697,7 +1714,8 @@ Do not skip directly to:
 * Dashboards
 * WhatsApp
 
-until the current domain behavior has been implemented and verified.
+until Stage 1 (the proven engine behind an API boundary, with persistence) is
+complete and verified, and the Stage 0 real-learner item has been addressed.
 
 ---
 

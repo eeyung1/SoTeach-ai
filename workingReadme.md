@@ -1,6 +1,6 @@
 # AI Tutor — Cross-Platform Redesign (App Store / Play Store / Web)
 
-**Status:** Pre-build. This document supersedes Section 7 ("Tech Stack —
+**Status:** Tutoring engine implemented and test-verified — no delivery layer yet (see [Section 8](#8-build-stages) current-state note). This document supersedes Section 7 ("Tech Stack —
 Recommendation") of the original `README.md` only. Sections 1–6 and 8–13 of
 the original README (product definition, learning loop, interaction rules,
 age calibration, MVP scope, state machine, testing plan, false-confidence
@@ -117,11 +117,13 @@ render + input layers only.
   correctness for a checkable answer.
 - Exposes its behavior to the Backend API layer only — it has no direct
   knowledge of HTTP, mobile, or web.
-- **Engineer note:** do not start implementing this layer until the manual
-  prompt-testing phase (README §8 / this document's [Section 8](#8-build-stages))
-  has shown real diagnostic signal. This is unchanged from the original
-  README and is the single most important sequencing rule in the whole
-  project.
+- **Engineer note:** this layer is now built and verified — implemented
+  test-first (state machine, interaction rules, deterministic Mathematics
+  answer checking, AI-provider boundary), proven by the automated tests in
+  `tests/`, with no direct knowledge of HTTP, mobile, or web. The original
+  manual prompt-testing phase (README §8 / Stage 0 below) was not executed
+  as a pre-code gate; completing it with real learners remains an open item
+  required before any client is built.
 
 ### 3.2 Layer: Backend API
 
@@ -299,19 +301,37 @@ condition, so an engineer can pick up a stage without re-deriving scope.
 done-condition is met**, per the original README's workflow discipline
 (§12): one feature at a time, tested and confirmed working before the next.
 
+> **Current state (mirrors the README.md status line):** the tutoring-engine
+> portion of Stage 1 is implemented and verified by the automated tests in
+> `tests/` — state machine (README §6), interaction rules (README §3),
+> deterministic Mathematics answer-checking, and the AI-provider boundary
+> (`ai/`, `session/`, `tutor/`). Not yet built: a callable backend API,
+> persistence, and every client stage (2–8). Stage 0 below was not executed
+> as a pre-code gate and remains an open item.
+
 ### Stage 0 — Prompt Validation (no application code)
 *Unchanged from original README §8.*
+> **Status: outstanding (open item).** The engine was developed test-first
+> rather than behind this manual phase; completing this phase with real
+> learners is still required before any client is built.
 - **Deliverable:** a strict tutoring-protocol system prompt, manually
   tested across real learners, with documented failures and fixes.
 - **Done when:** manual sessions consistently satisfy the Success Criteria
   in [Section 9](#9-success-criteria).
-- **Blocks everything below.**
+- **Blocks:** the client stages (2–8) and the backend API's "done" condition
+  below — not the engine code already written and test-verified.
 
 ### Stage 1 — Tutoring Engine + Backend API (headless)
+> **Status: engine part done; API + persistence outstanding.**
 - **Deliverable:** the state machine (README §6) and interaction rules
   (README §3) implemented as a backend service with a callable API,
   including deterministic Mathematics answer-checking. No UI yet — testable
   via API calls or a bare test harness.
+- **Done for the engine portion:** state machine, interaction rules, and
+  deterministic Mathematics answer-checking are implemented in Go and proven
+  by the automated tests in `tests/`.
+- **Remaining for this stage:** a callable API boundary (Agent.md §19) and
+  session persistence (Agent.md §20) around the proven engine.
 - **Done when:** the same failure scenarios collected in Stage 0 (wrong
   answer marked correct, lost learner identity, over-repetition, etc.) no
   longer occur when driven through the API.

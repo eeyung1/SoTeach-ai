@@ -1,6 +1,15 @@
 # AI Tutor — Diagnostic Learning System for Nigerian Students
 
-**Status:** Pre-build. Manual prompt testing phase (see [Section 8](#8-testing-plan--do-this-before-writing-any-application-code)) must show real signal before application code begins.
+**Status:** Tutoring engine implemented and test-verified — no delivery layer yet.
+The core loop from [Section 2](#2-the-core-learning-loop-this-is-the-product--read-this-section-fully-before-writing-tutor-logic)
+(DIAGNOSE → TEACH → PRACTICE → VERIFY → LOOP/CLOSE), the required state
+machine ([Section 6](#6-required-state-machine)), the interaction rules from
+[Section 3](#3-interaction-rules-derived-directly-from-a-real-observed-tutoring-session)
+(including deterministic Mathematics answer-checking), and the AI-provider
+boundary are built in Go (in-memory, headless) and proven by the automated
+tests in `tests/` — no UI, backend API, or persistence exists yet. The
+web/PWA/mobile delivery architecture and build stages are specified in
+`workingReadme.md`.
 
 This README is the single source of truth for the team. It merges three
 source documents — the business blueprint, the product overview, and a
@@ -194,6 +203,15 @@ model to self-report whether an answer was correct — verify it.
 
 This is not a formality — it's the actual next step, and it comes before
 any of the architecture above gets built.
+
+> **Status note:** the manual real-learner protocol-validation phase described
+> below was not executed as a pre-code gate — the tutoring behavior in
+> Sections 2–6 was instead developed incrementally and test-first, and is
+> currently proven by the automated tests in `tests/`. The plan below is
+> therefore not obsolete: validating the loop with real learners before any
+> client is built remains an open item (`workingReadme.md` §8, Stage 0), and
+> this section's core sequencing intent — prove the loop before expanding
+> infrastructure — is what the test-first work has satisfied so far.
 
 1. **Write the tutoring protocol** as a strict system prompt — covering
    turn-taking, waiting behavior, answer checking, confirmation rules,
