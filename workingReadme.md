@@ -305,12 +305,14 @@ done-condition is met**, per the original README's workflow discipline
 > **Current state (mirrors the README.md status line):** Stage 1 is
 > implemented and verified for the narrow MVP slice — the tutoring engine
 > (state machine, interaction rules, deterministic Mathematics answer
-> checking), the AI-provider boundary, an in-memory session store, and a thin
-> REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) — proven by 82
-> automated tests, with the full loop drivable over the API. Stage 2's web
-> client (`web/` + `cmd/server`) drives the full cycle in a browser (happy
-> path verified manually). Not yet built: durable (PostgreSQL) persistence
-> and the later client stages (3–8). Stage 0 below is a Blueprint-tracked
+> checking), the AI-provider boundary, a session store (in-memory
+> `MemoryStore` for tests, durable file-backed `FileStore` for the server),
+> and a thin REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) —
+> proven by 85 automated tests, with the full loop drivable over the API.
+> Sessions survive server restarts via `FileStore`; PostgreSQL remains the
+> planned long-term store. Stage 2's web client (`web/` + `cmd/server`)
+> drives the full cycle in a browser (happy path verified manually). Not yet
+> built: the later client stages (3–8). Stage 0 below is a Blueprint-tracked
 > open item that does not block development.
 
 ### Stage 0 — Prompt Validation (no application code)
@@ -327,19 +329,22 @@ done-condition is met**, per the original README's workflow discipline
 - **Blocks:** broad/real-world rollout only — not Stage 1/2 development.
 
 ### Stage 1 — Tutoring Engine + Backend API (headless)
-> **Status: done for the narrow MVP slice** (engine + in-memory store +
-> callable API); durable PostgreSQL persistence and the Stage 0 real-learner
-> item remain open.
+> **Status: done for the narrow MVP slice** (engine + store + callable API).
+> The session store is now durable (`FileStore`, survives restarts); PostgreSQL
+> remains the planned long-term store. The Stage 0 real-learner item remains
+> open (Blueprint-tracked, non-gating).
 - **Deliverable:** the state machine (README §6) and interaction rules
   (README §3) implemented as a backend service with a callable API,
   including deterministic Mathematics answer-checking. No UI yet — testable
   via API calls or a bare test harness.
 - **Done:** the engine (`session/`, `ai/`), the application layer that owns
-  the loop (`tutor/`), an in-memory session store, and the HTTP boundary
-  (`api/`: begin, input, resume) are implemented in Go and proven by 80
-  automated tests in `tests/`; the full loop runs over the API.
-- **Remaining:** durable persistence (Agent.md §20 — swap the in-memory
-  store for a real backend) and the Stage 0 real-learner validation item.
+  the loop (`tutor/`), a session store (in-memory `MemoryStore` for tests,
+  durable `FileStore` for the server), and the HTTP boundary (`api/`: begin,
+  input, resume) are implemented in Go and proven by 85 automated tests in
+  `tests/`; the full loop runs over the API.
+- **Remaining:** PostgreSQL as the long-term durable store (currently
+  file-backed `FileStore`, per Agent.md §20) and the Stage 0 real-learner
+  item.
 - **Done when:** the same failure scenarios collected in Stage 0 (wrong
   answer marked correct, lost learner identity, over-repetition, etc.) no
   longer occur when driven through the API.

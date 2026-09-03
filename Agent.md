@@ -1668,13 +1668,14 @@ Go version:
 Implementation layout:
 ai/       — AIProvider boundary, DiagnosticResult + validation (Agent.md §36-44)
 session/  — state machine, interaction rules, per-learner Session + Roster,
-            in-memory session store (MemoryStore)
+            session stores: MemoryStore (in-memory) + FileStore (durable),
+            shared Store contract (Agent.md §20)
 tutor/    — application layer that owns the loop: BeginTopic, SubmitDiagnosis,
             SubmitAnswer, ApplyInput (Agent.md §11, §19)
 api/      — thin REST/JSON HTTP boundary over the tutor and store (Agent.md §19)
 web/      — embedded Stage 2 web client (plain HTML/CSS/JS)
 cmd/server — runnable server: API + static web on one origin
-tests/    — 82 behavior tests, all passing via `go test ./tests/`
+tests/    — 85 behavior tests, all passing via `go test ./tests/`
 
 Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
 - The full server-owned loop runs over HTTP: begin -> diagnose -> practice ->
@@ -1694,6 +1695,8 @@ Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
   across switches; unverified progress discarded on switch
 - Session resumption without repeating completed diagnosis — at the domain,
   store, and HTTP layers (README §6)
+- Durable persistence: sessions survive a restart via the file-backed
+  FileStore behind the Store contract (Agent.md §20)
 - Grade-band validation: only Primary 4-6, JSS1-3, SSS1-3 (README §4, §10)
 - AI-validated diagnosis: malformed results rejected, provider failure leaves
   the session untouched (Agent.md §40-42)
@@ -1701,9 +1704,10 @@ Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
 
 Remaining before this backend is fully closed out:
 
-- Durable persistence: the session store is in-memory (behavior proven per
-  Agent.md §20); a real store (PostgreSQL is the planned target) is the next
-  backend step, keeping the API, tutor, and web-client behavior unchanged.
+- PostgreSQL as the long-term durable store: persistence is currently a
+  file-backed FileStore (Agent.md §20, durable and restart-safe); PostgreSQL
+  is swapped in behind the same Store contract with API, tutor, and web
+  behavior unchanged.
 
 Deferred product gaps (noted, not yet built):
 
@@ -1722,9 +1726,10 @@ Open, non-code item (Blueprint-tracked, not a development gate):
 
 The next task:
 
-Make persistence durable (Agent.md §20: swap MemoryStore for a real store with
-the API and tutor behavior unchanged) or address one of the deferred product
-gaps above. Proceed one feature at a time with the same test-first cycle (§3).
+Sessions now persist durably (FileStore, restart-safe). The next feature is
+either PostgreSQL behind the same Store contract, or one of the deferred
+product gaps above. Proceed one feature at a time with the same test-first
+cycle (§3).
 
 Do not skip directly to:
 
