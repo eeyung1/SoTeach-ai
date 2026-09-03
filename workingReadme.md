@@ -1,6 +1,6 @@
 # AI Tutor — Cross-Platform Redesign (App Store / Play Store / Web)
 
-**Status:** Stage 1 (tutoring engine + backend API) is implemented and test-verified for the narrow MVP slice (see [Section 8](#8-build-stages) current-state note). This document supersedes Section 7 ("Tech Stack —
+**Status:** Stage 1 (tutoring engine + backend API) and the core of Stage 2 (web client) are implemented and test-verified for the narrow MVP slice (see [Section 8](#8-build-stages) current-state note). This document supersedes Section 7 ("Tech Stack —
 Recommendation") of the original `README.md` only. Sections 1–6 and 8–13 of
 the original README (product definition, learning loop, interaction rules,
 age calibration, MVP scope, state machine, testing plan, false-confidence
@@ -122,8 +122,9 @@ render + input layers only.
   answer checking, AI-provider boundary), proven by the automated tests in
   `tests/`, with no direct knowledge of HTTP, mobile, or web. The original
   manual prompt-testing phase (README §8 / Stage 0 below) was not executed
-  as a pre-code gate; completing it with real learners remains an open item
-  required before any client is built.
+  as a pre-code gate; it is now a Blueprint-tracked open item to complete
+  before any broad/real-world rollout, and does not block further
+  development.
 
 ### 3.2 Layer: Backend API
 
@@ -305,23 +306,25 @@ done-condition is met**, per the original README's workflow discipline
 > implemented and verified for the narrow MVP slice — the tutoring engine
 > (state machine, interaction rules, deterministic Mathematics answer
 > checking), the AI-provider boundary, an in-memory session store, and a thin
-> REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) — proven by 80
-> automated tests, with the full loop drivable over the API. Not yet built:
-> any client stage (2–8) and durable (PostgreSQL) persistence — the store is
-> in-memory. Stage 0 below was not executed as a pre-code gate and remains an
-> open item.
+> REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) — proven by 82
+> automated tests, with the full loop drivable over the API. Stage 2's web
+> client (`web/` + `cmd/server`) drives the full cycle in a browser (happy
+> path verified manually). Not yet built: durable (PostgreSQL) persistence
+> and the later client stages (3–8). Stage 0 below is a Blueprint-tracked
+> open item that does not block development.
 
 ### Stage 0 — Prompt Validation (no application code)
 *Unchanged from original README §8.*
-> **Status: outstanding (open item).** The engine was developed test-first
-> rather than behind this manual phase; completing this phase with real
-> learners is still required before any client is built.
+> **Status: outstanding — Blueprint-tracked (not a development gate).** The
+> engine and web client were built test-first rather than behind this manual
+> phase. This real-learner validation is owned under `Blueprint/` and should
+> be completed before any broad/real-world rollout; it does not block further
+> development.
 - **Deliverable:** a strict tutoring-protocol system prompt, manually
   tested across real learners, with documented failures and fixes.
 - **Done when:** manual sessions consistently satisfy the Success Criteria
   in [Section 9](#9-success-criteria).
-- **Blocks:** the client stages (2–8) only — not the Stage 1 work already
-  done and test-verified.
+- **Blocks:** broad/real-world rollout only — not Stage 1/2 development.
 
 ### Stage 1 — Tutoring Engine + Backend API (headless)
 > **Status: done for the narrow MVP slice** (engine + in-memory store +
@@ -342,6 +345,13 @@ done-condition is met**, per the original README's workflow discipline
   longer occur when driven through the API.
 
 ### Stage 2 — Web Client (browser, non-installable first pass)
+> **Status: core loop done.** A plain HTML/CSS/JS page (`web/`) served by the
+> Go server (`cmd/server`) drives the full diagnose→practice→verify cycle in
+> a browser; the happy path was verified manually with a real learner.
+> Deferred product gaps: a subject/topic picker and grade-band/age capture
+> (the UI hardcodes Mathematics → Addition); and a wrong answer loops to a
+> fresh question with no teach-on-repeated-wrong, attempt cap, or learner
+> stop/quit affordance until the loop closes correctly.
 - **Deliverable:** a minimal browser UI against the Stage 1 API covering
   one subject, one grade band, one learner at a time — proves the full
   client↔backend loop end to end.

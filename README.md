@@ -1,18 +1,21 @@
 # AI Tutor — Diagnostic Learning System for Nigerian Students
 
-**Status:** Stage 1 (tutoring engine + backend API) is implemented and
-test-verified for the narrow MVP slice — 80 automated tests green. The core
-loop from [Section 2](#2-the-core-learning-loop-this-is-the-product--read-this-section-fully-before-writing-tutor-logic)
+**Status:** Stage 1 (tutoring engine + backend API) and the core of Stage 2
+(a minimal web client) are implemented and test-verified for the narrow MVP
+slice — 82 automated tests green, plus a manually verified full tutoring
+cycle in a real browser. The core loop from [Section 2](#2-the-core-learning-loop-this-is-the-product--read-this-section-fully-before-writing-tutor-logic)
 (DIAGNOSE → TEACH → PRACTICE → VERIFY → LOOP/CLOSE), the required state
 machine ([Section 6](#6-required-state-machine)), the interaction rules from
 [Section 3](#3-interaction-rules-derived-directly-from-a-real-observed-tutoring-session)
 (including deterministic Mathematics answer-checking), the AI-provider
-boundary, an in-memory session store, and a thin REST/JSON HTTP API are built
-in Go (`session/`, `ai/`, `tutor/`, `api/`, `tests/`). The full loop runs
-headless over the API: begin → diagnose → practice → verify → mastery. Not
-yet built: any client (web/PWA/mobile), and durable PostgreSQL persistence —
-the session store is in-memory, per the prove-in-memory-first sequencing of
-Agent.md §20. Delivery architecture and build stages live in `workingReadme.md`.
+boundary, an in-memory session store, a thin REST/JSON HTTP API, and a plain
+HTML/CSS/JS browser client are built in Go + web (`session/`, `ai/`, `tutor/`,
+`api/`, `web/`, `cmd/`, `tests/`). A learner begins Mathematics → Addition in
+the browser and is guided through diagnose → practice → verify → mastery with
+no engineer intervention. Not yet built: durable PostgreSQL persistence (the
+store is in-memory, per Agent.md §20), PWA/offline (Stage 3), and native
+mobile (Stage 4). Delivery architecture and build stages live in
+`workingReadme.md`.
 
 This README is the single source of truth for the team. It merges three
 source documents — the business blueprint, the product overview, and a
@@ -211,10 +214,11 @@ any of the architecture above gets built.
 > below was not executed as a pre-code gate — the tutoring behavior in
 > Sections 2–6 was instead developed incrementally and test-first, and is
 > currently proven by the automated tests in `tests/`. The plan below is
-> therefore not obsolete: validating the loop with real learners before any
-> client is built remains an open item (`workingReadme.md` §8, Stage 0), and
-> this section's core sequencing intent — prove the loop before expanding
-> infrastructure — is what the test-first work has satisfied so far.
+> therefore not obsolete: validating the loop with real learners remains an
+> open item owned under `Blueprint/` (workingReadme.md §8, Stage 0) and should
+> be completed before any broad/real-world rollout; it does not block further
+> development. This section's core sequencing intent — prove the loop before
+> expanding infrastructure — is what the test-first work has satisfied so far.
 
 1. **Write the tutoring protocol** as a strict system prompt — covering
    turn-taking, waiting behavior, answer checking, confirmation rules,

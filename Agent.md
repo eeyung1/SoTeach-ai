@@ -1672,12 +1672,16 @@ session/  — state machine, interaction rules, per-learner Session + Roster,
 tutor/    — application layer that owns the loop: BeginTopic, SubmitDiagnosis,
             SubmitAnswer, ApplyInput (Agent.md §11, §19)
 api/      — thin REST/JSON HTTP boundary over the tutor and store (Agent.md §19)
-tests/    — 80 behavior tests, all passing via `go test ./tests/`
+web/      — embedded Stage 2 web client (plain HTML/CSS/JS)
+cmd/server — runnable server: API + static web on one origin
+tests/    — 82 behavior tests, all passing via `go test ./tests/`
 
 Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
 - The full server-owned loop runs over HTTP: begin -> diagnose -> practice ->
   verify -> mastery; the client sends only the learner's words and receives a
   prompt plus the authoritative state token back.
+- Stage 2 done-condition met: a real learner completes the full cycle in a
+  browser (web/ served by cmd/server) with no engineer intervention.
 - Wait-for-learner; no advancing while an answer is pending (README §3)
 - DIAGNOSE -> TEACH -> PRACTICE -> VERIFY loop; no stage skippable (README §2)
 - Deterministic answer checking; uncertain answers distinguished (README §8.4, §9)
@@ -1699,23 +1703,31 @@ Remaining before this backend is fully closed out:
 
 - Durable persistence: the session store is in-memory (behavior proven per
   Agent.md §20); a real store (PostgreSQL is the planned target) is the next
-  backend step, keeping the API and tutor behavior unchanged and proven.
+  backend step, keeping the API, tutor, and web-client behavior unchanged.
 
-Open, non-code item:
+Deferred product gaps (noted, not yet built):
 
-- Real-learner protocol validation (workingReadme.md §8, Stage 0) was not
-  executed as a pre-code gate and remains required before any client is built.
+- Subject/topic picker and grade-band/age capture in the web client — the UI
+  hardcodes Mathematics → Addition and the engine content is not age-
+  calibrated yet.
+- Wrong answers loop to a fresh question indefinitely: no teach-on-repeated-
+  wrong, no attempt cap, and no learner stop/quit affordance until the loop
+  closes correctly.
+
+Open, non-code item (Blueprint-tracked, not a development gate):
+
+- Real-learner protocol validation (workingReadme.md §8, Stage 0) is owned
+  under `Blueprint/` and should be completed before any broad/real-world
+  rollout; it does not block Stage 1/2 development.
 
 The next task:
 
 Make persistence durable (Agent.md §20: swap MemoryStore for a real store with
-the API and tutor behavior unchanged) — or, if moving toward delivery,
-complete the Stage 0 real-learner validation and begin Stage 2 (web client).
-Either way, proceed one feature at a time with the same test-first cycle (§3).
+the API and tutor behavior unchanged) or address one of the deferred product
+gaps above. Proceed one feature at a time with the same test-first cycle (§3).
 
 Do not skip directly to:
 
-* Web UI
 * Mobile
 * Authentication
 * Deployment
@@ -1724,8 +1736,8 @@ Do not skip directly to:
 * Dashboards
 * WhatsApp
 
-until the backend is durable, and the Stage 0 real-learner item has been
-addressed before any client is built.
+until the backend is durable. (Stage 2's web client is built — Web UI is no
+longer on the skip list.)
 
 ---
 
