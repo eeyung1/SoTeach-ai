@@ -152,6 +152,56 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 	}
 }
 
+// BeginTopic starts (or resumes) a learner's session on a topic — the
+// server-side entry to the loop (README §6, SELECT_SUBJECT -> SELECT_TOPIC ->
+// DIAGNOSE). A thin client never chooses the diagnostic wording; the server
+// selects subject/topic and returns the first thing the learner should
+// respond to.
+//
+// Beginning a topic the learner already has in progress resumes it at the
+// correct state rather than repeating diagnosis (README §6): a pending
+// question is returned, and already-recorded mastery is reported, not reset.
+// A topic with no server-side content is rejected without creating a session
+// (README §5).
+func (t *Tutor) BeginTopic(learner, subject, topic string) (Outcome, error) {
+	prompt, err := diagnosticPrompt(topic)
+	if err != nil {
+		return Outcome{}, err
+	}
+
+	s, err := t.store.Load(learner)
+	if errors.Is(err, session.ErrSessionNotFound) {
+		s = session.New(learner)
+	} else if err != nil {
+		return Outcome{}, err
+	}
+
+	s.SelectSubject(subject)
+	if err := s.SelectTopic(topic); err != nil {
+		return Outcome{}, err
+	}
+
+	var next string
+	switch {
+	case s.State() == session.Mastered:
+		next = "You have already mastered " + topic + "."
+	case s.State() == session.Idle:
+		// Fresh topic (new learner, or switched from another topic): start
+		// diagnosis for this topic.
+		s.StartDiagnosis(prompt)
+		next = prompt
+	case !s.DiagnosisComplete():
+		// Resumed mid-diagnosis: return the diagnostic prompt again.
+		next = prompt
+	default:
+		// Diagnosis complete with a question pending: resume with that question.
+		next = s.CurrentQuestion()
+	}
+
+	t.store.Save(s)
+	return Outcome{Prompt: next}, nil
+}
+
 // qa pairs a question with its deterministic expected answer.
 type qa struct {
 	question       string
@@ -224,4 +274,15 @@ func explanation(topic string) string {
 // mastered (README §2, LOOP OR CLOSE: briefly confirm mastery and stop).
 func completionMessage(topic string) string {
 	return "That's right! You have mastered " + topic + "."
+}
+
+// diagnosticPrompt is the server-owned opening question of the DIAGNOSE stage
+// (README §2 Stage 1) for a topic.
+func diagnosticPrompt(topic string) (string, error) {
+	switch topic {
+	case "Addition":
+		return "What do you already know about addition?", nil
+	default:
+		return "", ErrTopicNotYetSupported
+	}
 }
