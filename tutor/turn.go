@@ -27,6 +27,12 @@ var ErrNoQuestionPending = errors.New("no question is pending for this learner")
 // than a normal learner condition.
 var ErrUnexpectedAnswerState = errors.New("tutor does not know how to continue from this answer state")
 
+// ErrNothingAwaitingInput is returned when learner input arrives at a point
+// where the session is not waiting for any — e.g. after mastery, when there
+// is nothing left to answer in this loop (README §3). It must not be silently
+// ignored or misrouted.
+var ErrNothingAwaitingInput = errors.New("no input is expected from the learner right now")
+
 // Tutor is the application layer that owns the tutoring loop (README §2;
 // Agent.md §11): it decides what happens next in a learner's session and what
 // the learner is asked or told. A thin client never sequences the loop — it
@@ -200,6 +206,28 @@ func (t *Tutor) BeginTopic(learner, subject, topic string) (Outcome, error) {
 
 	t.store.Save(s)
 	return Outcome{Prompt: next}, nil
+}
+
+// ApplyInput routes one piece of learner input to the correct tutoring action
+// from the session state alone (README §6): a learner mid-diagnosis is giving
+// their explanation, while a learner with a question pending is giving an
+// answer. Keeping this routing inside the engine means HTTP handlers never
+// decide what an input means (Agent.md §19). It is rejected when no session
+// exists for the learner, or when the session is not waiting for any input.
+func (t *Tutor) ApplyInput(learner, input string) (Outcome, error) {
+	s, err := t.store.Load(learner)
+	if err != nil {
+		return Outcome{}, err
+	}
+
+	switch {
+	case s.State() == session.Diagnosing && !s.DiagnosisComplete():
+		return t.SubmitDiagnosis(learner, input)
+	case s.State() == session.WaitForAnswer:
+		return t.SubmitAnswer(learner, input)
+	default:
+		return Outcome{}, ErrNothingAwaitingInput
+	}
 }
 
 // qa pairs a question with its deterministic expected answer.
