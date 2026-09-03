@@ -21,7 +21,7 @@ import (
 // Exposing registration separately lets a server mount the same routes
 // alongside other handlers (e.g. the static web client) on one ServeMux, so
 // clients and the API share one origin (Agent.md §19; workingReadme §3.2).
-func AddRoutes(mux *http.ServeMux, store *session.MemoryStore) {
+func AddRoutes(mux *http.ServeMux, store session.Store) {
 	a := &sessionAPI{store: store, tutor: tutor.NewTutor(store)}
 
 	mux.HandleFunc("GET /learners/{learner}/session", a.resumeSession)
@@ -31,14 +31,14 @@ func AddRoutes(mux *http.ServeMux, store *session.MemoryStore) {
 
 // NewHandler returns a standalone http.Handler for the tutoring API over the
 // given session store.
-func NewHandler(store *session.MemoryStore) http.Handler {
+func NewHandler(store session.Store) http.Handler {
 	mux := http.NewServeMux()
 	AddRoutes(mux, store)
 	return mux
 }
 
 type sessionAPI struct {
-	store *session.MemoryStore
+	store session.Store
 	tutor *tutor.Tutor
 }
 

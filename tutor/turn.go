@@ -42,11 +42,11 @@ var ErrNothingAwaitingInput = errors.New("no input is expected from the learner 
 // deterministic stub for now, to be replaced by AI-generated content when a
 // concrete requirement exists — Agent.md §38).
 type Tutor struct {
-	store *session.MemoryStore
+	store session.Store
 }
 
 // NewTutor creates a Tutor over the given session store.
-func NewTutor(store *session.MemoryStore) *Tutor {
+func NewTutor(store session.Store) *Tutor {
 	return &Tutor{store: store}
 }
 
@@ -80,7 +80,9 @@ func (t *Tutor) SubmitDiagnosis(learner, explanation string) (Outcome, error) {
 	if err := s.AskQuestion(question, expected); err != nil {
 		return Outcome{}, err
 	}
-	t.store.Save(s)
+	if err := t.store.Save(s); err != nil {
+		return Outcome{}, err
+	}
 
 	return Outcome{Prompt: question}, nil
 }
@@ -115,7 +117,9 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 
 	switch s.State() {
 	case session.Mastered:
-		t.store.Save(s)
+		if err := t.store.Save(s); err != nil {
+			return Outcome{}, err
+		}
 		return Outcome{Prompt: completionMessage(s.Topic())}, nil
 
 	case session.AwaitingTransferCheck:
@@ -126,7 +130,9 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 		if err := s.AskTransferQuestion(question, expected); err != nil {
 			return Outcome{}, err
 		}
-		t.store.Save(s)
+		if err := t.store.Save(s); err != nil {
+			return Outcome{}, err
+		}
 		return Outcome{Prompt: question}, nil
 
 	case session.Incorrect:
@@ -137,7 +143,9 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 		if err := s.AskQuestion(question, expected); err != nil {
 			return Outcome{}, err
 		}
-		t.store.Save(s)
+		if err := t.store.Save(s); err != nil {
+			return Outcome{}, err
+		}
 		return Outcome{Prompt: question}, nil
 
 	case session.Uncertain:
@@ -150,7 +158,9 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 		if err := s.AskQuestion(question, expected); err != nil {
 			return Outcome{}, err
 		}
-		t.store.Save(s)
+		if err := t.store.Save(s); err != nil {
+			return Outcome{}, err
+		}
 		return Outcome{Prompt: teach + " " + question}, nil
 
 	default:
@@ -204,7 +214,9 @@ func (t *Tutor) BeginTopic(learner, subject, topic string) (Outcome, error) {
 		next = s.CurrentQuestion()
 	}
 
-	t.store.Save(s)
+	if err := t.store.Save(s); err != nil {
+		return Outcome{}, err
+	}
 	return Outcome{Prompt: next}, nil
 }
 
