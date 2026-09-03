@@ -1,0 +1,102 @@
+:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  background: #f4f6f8;
+  color: #1a202c;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+h1 {
+  font-size: 1.75rem;
+  margin: 0 0 0.25rem;
+}
+
+.tagline {
+  color: #4a5568;
+  margin: 0 0 1.5rem;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+label {
+  font-weight: 600;
+}
+
+input[type="text"] {
+  flex: 1 1 16rem;
+  font-size: 1.1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 0.4rem;
+}
+
+button {
+  font-size: 1.05rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: #2b6cb0;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #a0aec0;
+  cursor: default;
+}
+
+#transcript {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.message {
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.5rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  white-space: pre-wrap;
+}
+
+.message.system {
+  background: transparent;
+  border-color: transparent;
+  color: #4a5568;
+  font-style: italic;
+}
+
+#chat-form {
+  margin-top: 1.5rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

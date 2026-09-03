@@ -17,13 +17,23 @@ import (
 // NewHandler wires the API's HTTP routes to the given session store and
 // returns a handler ready to serve. REST/JSON over the Go standard library,
 // the single API style for this project (Agent.md §19).
-func NewHandler(store *session.MemoryStore) http.Handler {
+// AddRoutes registers the tutoring API's routes onto mux for the given store.
+// Exposing registration separately lets a server mount the same routes
+// alongside other handlers (e.g. the static web client) on one ServeMux, so
+// clients and the API share one origin (Agent.md §19; workingReadme §3.2).
+func AddRoutes(mux *http.ServeMux, store *session.MemoryStore) {
 	a := &sessionAPI{store: store, tutor: tutor.NewTutor(store)}
 
-	mux := http.NewServeMux()
 	mux.HandleFunc("GET /learners/{learner}/session", a.resumeSession)
 	mux.HandleFunc("POST /learners/{learner}/begin", a.beginSession)
 	mux.HandleFunc("POST /learners/{learner}/input", a.submitInput)
+}
+
+// NewHandler returns a standalone http.Handler for the tutoring API over the
+// given session store.
+func NewHandler(store *session.MemoryStore) http.Handler {
+	mux := http.NewServeMux()
+	AddRoutes(mux, store)
 	return mux
 }
 

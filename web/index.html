@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SoTeach — Addition Tutor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <h1>SoTeach</h1>
+    <p class="tagline">Type your name to begin, then keep answering. The tutor will guide you step by step.</p>
+
+    <form id="start-form">
+      <label for="learner-name">Your name</label>
+      <input id="learner-name" type="text" autocomplete="off" required>
+      <button type="submit">Begin: Mathematics — Addition</button>
+    </form>
+
+    <section id="transcript" aria-live="polite" hidden></section>
+
+    <form id="chat-form" hidden>
+      <label for="answer" class="visually-hidden">Your answer</label>
+      <input id="answer" type="text" autocomplete="off" placeholder="Type your answer…">
+      <button type="submit">Send</button>
+    </form>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
