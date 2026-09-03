@@ -1,15 +1,18 @@
 # AI Tutor — Diagnostic Learning System for Nigerian Students
 
-**Status:** Tutoring engine implemented and test-verified — no delivery layer yet.
-The core loop from [Section 2](#2-the-core-learning-loop-this-is-the-product--read-this-section-fully-before-writing-tutor-logic)
+**Status:** Stage 1 (tutoring engine + backend API) is implemented and
+test-verified for the narrow MVP slice — 80 automated tests green. The core
+loop from [Section 2](#2-the-core-learning-loop-this-is-the-product--read-this-section-fully-before-writing-tutor-logic)
 (DIAGNOSE → TEACH → PRACTICE → VERIFY → LOOP/CLOSE), the required state
 machine ([Section 6](#6-required-state-machine)), the interaction rules from
 [Section 3](#3-interaction-rules-derived-directly-from-a-real-observed-tutoring-session)
-(including deterministic Mathematics answer-checking), and the AI-provider
-boundary are built in Go (in-memory, headless) and proven by the automated
-tests in `tests/` — no UI, backend API, or persistence exists yet. The
-web/PWA/mobile delivery architecture and build stages are specified in
-`workingReadme.md`.
+(including deterministic Mathematics answer-checking), the AI-provider
+boundary, an in-memory session store, and a thin REST/JSON HTTP API are built
+in Go (`session/`, `ai/`, `tutor/`, `api/`, `tests/`). The full loop runs
+headless over the API: begin → diagnose → practice → verify → mastery. Not
+yet built: any client (web/PWA/mobile), and durable PostgreSQL persistence —
+the session store is in-memory, per the prove-in-memory-first sequencing of
+Agent.md §20. Delivery architecture and build stages live in `workingReadme.md`.
 
 This README is the single source of truth for the team. It merges three
 source documents — the business blueprint, the product overview, and a

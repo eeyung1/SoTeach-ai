@@ -1667,29 +1667,39 @@ Go version:
 
 Implementation layout:
 ai/       — AIProvider boundary, DiagnosticResult + validation (Agent.md §36-44)
-session/  — state machine, interaction rules, per-learner Session + Roster
-tutor/    — thin wiring of AIProvider into Session (Agent.md §42)
-tests/    — 55 behavior tests, all passing via `go test ./...`
+session/  — state machine, interaction rules, per-learner Session + Roster,
+            in-memory session store (MemoryStore)
+tutor/    — application layer that owns the loop: BeginTopic, SubmitDiagnosis,
+            SubmitAnswer, ApplyInput (Agent.md §11, §19)
+api/      — thin REST/JSON HTTP boundary over the tutor and store (Agent.md §19)
+tests/    — 80 behavior tests, all passing via `go test ./tests/`
 
-Verified behavior (tutoring engine, in-memory, headless):
+Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
+- The full server-owned loop runs over HTTP: begin -> diagnose -> practice ->
+  verify -> mastery; the client sends only the learner's words and receives a
+  prompt plus the authoritative state token back.
 - Wait-for-learner; no advancing while an answer is pending (README §3)
-- DIAGNOSE → TEACH → PRACTICE → VERIFY loop; no stage skippable (README §2)
+- DIAGNOSE -> TEACH -> PRACTICE -> VERIFY loop; no stage skippable (README §2)
 - Deterministic answer checking; uncertain answers distinguished (README §8.4, §9)
-- Transfer/verification question required before mastery (README §3, "Correct ≠ understanding")
+- Correct -> transfer question (genuinely different); transfer-correct -> mastery
+- Wrong-but-attempted -> fresh question; uncertain -> taught then re-asked
+  (README §6, §9)
 - Exact confirmation count (max two) tracked as explicit state (README §8.3)
 - One active respondent; learner state kept separate (README §3)
-- Subject/topic selection nested per README §6; mastery per subject+topic and
-  preserved across switches; unverified progress discarded on switch
-- Session resumption without repeating completed diagnosis (README §6)
+- Subject/topic nesting per README §6; mastery per subject+topic, preserved
+  across switches; unverified progress discarded on switch
+- Session resumption without repeating completed diagnosis — at the domain,
+  store, and HTTP layers (README §6)
 - Grade-band validation: only Primary 4-6, JSS1-3, SSS1-3 (README §4, §10)
 - AI-validated diagnosis: malformed results rejected, provider failure leaves
   the session untouched (Agent.md §40-42)
 ```
 
-Remaining within Stage 1 (Agent.md §25 / workingReadme.md §8, Stage 1):
+Remaining before this backend is fully closed out:
 
-- Session persistence (Agent.md §20 — behavior is proven in memory; persisting it is next)
-- The API boundary and HTTP layer (Agent.md §19)
+- Durable persistence: the session store is in-memory (behavior proven per
+  Agent.md §20); a real store (PostgreSQL is the planned target) is the next
+  backend step, keeping the API and tutor behavior unchanged and proven.
 
 Open, non-code item:
 
@@ -1698,10 +1708,10 @@ Open, non-code item:
 
 The next task:
 
-Finish Stage 1's remaining pieces — expose the proven engine through the API
-boundary and add session persistence — using the same test-first cycle (§3).
-Follow Agent.md §20's sequencing: prove the API/persistence behavior in memory
-through domain tests before introducing PostgreSQL.
+Make persistence durable (Agent.md §20: swap MemoryStore for a real store with
+the API and tutor behavior unchanged) — or, if moving toward delivery,
+complete the Stage 0 real-learner validation and begin Stage 2 (web client).
+Either way, proceed one feature at a time with the same test-first cycle (§3).
 
 Do not skip directly to:
 
@@ -1714,8 +1724,8 @@ Do not skip directly to:
 * Dashboards
 * WhatsApp
 
-until Stage 1 (the proven engine behind an API boundary, with persistence) is
-complete and verified, and the Stage 0 real-learner item has been addressed.
+until the backend is durable, and the Stage 0 real-learner item has been
+addressed before any client is built.
 
 ---
 
