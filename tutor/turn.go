@@ -17,6 +17,16 @@ var ErrSessionNotAwaitingDiagnosis = errors.New("session is not awaiting a diagn
 // (README §5); content is added one supported topic at a time.
 var ErrTopicNotYetSupported = errors.New("no practice content yet for this topic")
 
+// ErrNoQuestionPending is returned when an answer is submitted while no
+// question is awaiting one (README §3, rule "Wait for the learner" — there is
+// nothing to answer yet).
+var ErrNoQuestionPending = errors.New("no question is pending for this learner")
+
+// ErrUnexpectedAnswerState is returned if an answer routes to a session state
+// the tutor does not know how to continue from. It indicates a bug rather
+// than a normal learner condition.
+var ErrUnexpectedAnswerState = errors.New("tutor does not know how to continue from this answer state")
+
 // Tutor is the application layer that owns the tutoring loop (README §2;
 // Agent.md §11): it decides what happens next in a learner's session and what
 // the learner is asked or told. A thin client never sequences the loop — it
@@ -69,14 +79,149 @@ func (t *Tutor) SubmitDiagnosis(learner, explanation string) (Outcome, error) {
 	return Outcome{Prompt: question}, nil
 }
 
-// firstPracticeQuestion is the server-owned content source for the MVP: the
-// first practice question a learner gets for a topic, with its deterministic
-// expected answer. Content arrives one supported topic at a time (README §5).
-func firstPracticeQuestion(topic string) (question, expectedAnswer string, err error) {
-	switch topic {
-	case "Addition":
-		return "What is 7 + 3?", "10", nil
+// SubmitAnswer routes the learner's answer to the pending question according
+// to the tutoring loop (README §2):
+//
+//   - correct answer to the original practice question -> the server poses a
+//     genuinely different transfer question (README §3, "Correct ≠
+//     understanding"; §2 Stage 4 VERIFY)
+//   - correct answer to that transfer question -> mastery is recorded and the
+//     learner is told the concept is complete
+//   - incorrect answer -> a fresh practice question for the same gap
+//     (README §6, HANDLE_INCORRECT_OR_UNCERTAIN_ANSWER loops back)
+//   - uncertain answer ("I don't know") -> the server teaches the gap first,
+//     then asks a fresh question (README §9, explicit uncertainty behavior)
+//
+// It is rejected when no question is pending. The client supplies only the
+// answer text; every routing and content decision stays server-side.
+func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
+	s, err := t.store.Load(learner)
+	if err != nil {
+		return Outcome{}, err
+	}
+
+	if s.State() != session.WaitForAnswer {
+		return Outcome{}, ErrNoQuestionPending
+	}
+
+	s.SubmitAnswer(answer)
+	s.CheckAnswer()
+
+	switch s.State() {
+	case session.Mastered:
+		t.store.Save(s)
+		return Outcome{Prompt: completionMessage(s.Topic())}, nil
+
+	case session.AwaitingTransferCheck:
+		question, expected, err := transferQuestion(s.Topic())
+		if err != nil {
+			return Outcome{}, err
+		}
+		if err := s.AskTransferQuestion(question, expected); err != nil {
+			return Outcome{}, err
+		}
+		t.store.Save(s)
+		return Outcome{Prompt: question}, nil
+
+	case session.Incorrect:
+		question, expected, err := nextPracticeQuestion(s.Topic(), s.CurrentQuestion())
+		if err != nil {
+			return Outcome{}, err
+		}
+		if err := s.AskQuestion(question, expected); err != nil {
+			return Outcome{}, err
+		}
+		t.store.Save(s)
+		return Outcome{Prompt: question}, nil
+
+	case session.Uncertain:
+		teach := explanation(s.Topic())
+		question, expected, err := nextPracticeQuestion(s.Topic(), s.CurrentQuestion())
+		if err != nil {
+			return Outcome{}, err
+		}
+		s.Teach(teach)
+		if err := s.AskQuestion(question, expected); err != nil {
+			return Outcome{}, err
+		}
+		t.store.Save(s)
+		return Outcome{Prompt: teach + " " + question}, nil
+
 	default:
+		return Outcome{}, ErrUnexpectedAnswerState
+	}
+}
+
+// qa pairs a question with its deterministic expected answer.
+type qa struct {
+	question       string
+	expectedAnswer string
+}
+
+// additionPracticeQuestions is the ordered set of practice questions for the
+// Addition topic. Content is deliberately small (README §5) and grows with
+// the concept set.
+var additionPracticeQuestions = []qa{
+	{question: "What is 7 + 3?", expectedAnswer: "10"},
+	{question: "What is 4 + 6?", expectedAnswer: "10"},
+	{question: "What is 2 + 5?", expectedAnswer: "7"},
+}
+
+func practiceQuestions(topic string) ([]qa, error) {
+	if topic != "Addition" {
+		return nil, ErrTopicNotYetSupported
+	}
+	return additionPracticeQuestions, nil
+}
+
+// firstPracticeQuestion is the first practice question a learner gets for a
+// topic, with its deterministic expected answer.
+func firstPracticeQuestion(topic string) (question, expectedAnswer string, err error) {
+	qs, err := practiceQuestions(topic)
+	if err != nil {
+		return "", "", err
+	}
+	return qs[0].question, qs[0].expectedAnswer, nil
+}
+
+// nextPracticeQuestion returns a practice question different from last for a
+// topic, so an incorrect or uncertain answer loops back to a fresh question
+// for the same gap rather than repeating the identical one.
+func nextPracticeQuestion(topic, last string) (question, expectedAnswer string, err error) {
+	qs, err := practiceQuestions(topic)
+	if err != nil {
+		return "", "", err
+	}
+	for _, q := range qs {
+		if q.question != last {
+			return q.question, q.expectedAnswer, nil
+		}
+	}
+	return qs[0].question, qs[0].expectedAnswer, nil
+}
+
+// transferQuestion is the verification question posed after a correct answer
+// (README §2 Stage 4 VERIFY). It is deliberately different from every
+// practice question, so the domain's distinctness rule
+// (ErrTransferQuestionNotDistinct) never trips.
+func transferQuestion(topic string) (question, expectedAnswer string, err error) {
+	if topic != "Addition" {
 		return "", "", ErrTopicNotYetSupported
 	}
+	return "What is 5 + 6?", "11", nil
+}
+
+// explanation is the plain-language explanation served to a learner who is
+// uncertain, before a fresh question is asked (README §9).
+func explanation(topic string) string {
+	if topic == "Addition" {
+		return "Addition means putting two groups together and counting all the items to find the total."
+	}
+	return ""
+}
+
+// completionMessage is what the learner is told when a concept is verified
+// mastered (README §2, LOOP OR CLOSE: briefly confirm mastery and stop).
+func completionMessage(topic string) string {
+	return "That's right! You have mastered " + topic + "."
 }
