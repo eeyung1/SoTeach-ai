@@ -308,7 +308,7 @@ done-condition is met**, per the original README's workflow discipline
 > checking), the AI-provider boundary, a session store (in-memory
 > `MemoryStore` for tests, durable file-backed `FileStore` for the server),
 > and a thin REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) —
-> proven by 97 automated tests, with the full loop drivable over the API.
+> proven by 100 automated tests, with the full loop drivable over the API.
 > Sessions survive server restarts via `FileStore`; PostgreSQL remains the
 > planned long-term store. Stage 2's web client (`web/` + `cmd/server`)
 > drives the full cycle in a browser (happy path verified manually). Not yet
@@ -340,7 +340,7 @@ done-condition is met**, per the original README's workflow discipline
 - **Done:** the engine (`session/`, `ai/`), the application layer that owns
   the loop (`tutor/`), a session store (in-memory `MemoryStore` for tests,
   durable `FileStore` for the server), and the HTTP boundary (`api/`: begin,
-  input, resume) are implemented in Go and proven by 93 automated tests in
+  input, resume) are implemented in Go and proven by 100 automated tests in
   `tests/`; the full loop runs over the API.
 - **Remaining:** PostgreSQL as the long-term durable store (currently
   file-backed `FileStore`, per Agent.md §20) and the Stage 0 real-learner
@@ -350,13 +350,12 @@ done-condition is met**, per the original README's workflow discipline
   longer occur when driven through the API.
 
 ### Stage 2 — Web Client (browser, non-installable first pass)
-> **Status: core loop done; picker done.** A plain HTML/CSS/JS page (`web/`)
+> **Status: core loop + picker done.** A plain HTML/CSS/JS page (`web/`)
 > served by the Go server (`cmd/server`) drives the full cycle in a browser.
 > The start form is fed by the server-owned `/curriculum` catalog (subject,
 > topic, and grade band), and begin captures the learner's grade band
-> (README §4/§10). Deferred product gap: a wrong answer still loops to a
-> fresh question with no teach-on-repeated-wrong, attempt cap, or learner
-> stop/quit affordance until the loop closes correctly.
+> (README §4/§10). The loop teaches the gap after repeated wrong answers and
+> honors stop/quit/exit/enough as a learner exit (README §9).
 - **Deliverable:** a minimal browser UI against the Stage 1 API covering
   one subject, one grade band, one learner at a time — proves the full
   client↔backend loop end to end.
