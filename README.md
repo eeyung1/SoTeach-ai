@@ -23,6 +23,48 @@ yet built: PWA/offline (Stage 3) and native mobile
 (Stage 4). Delivery architecture and build stages live in
 `workingReadme.md`.
 
+## Running the server (local development)
+
+The whole app is one Go server (`cmd/server`) — the web client is embedded and
+served on the same origin. From the repo root:
+
+```bash
+go run ./cmd/server
+```
+
+That runs the file-backed store with no AI, on `http://localhost:8080` (stop
+with Ctrl+C). Use `-data <dir>` for a different data directory and `-addr` to
+change the port.
+
+**Optional: AI-evaluated diagnosis (Groq).** Copy `.env.example` to `.env`,
+put your key on the `SOTEACH_AI_API_KEY=` line (and optionally set a model),
+then load it and run:
+
+```bash
+set -a && source .env && set +a && go run ./cmd/server
+```
+
+Or set the variables inline — pick a model from your account with
+`curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $SOTEACH_AI_API_KEY"`:
+
+```bash
+SOTEACH_AI_PROVIDER=groq SOTEACH_AI_API_KEY='<your groq key>' SOTEACH_AI_MODEL=openai/gpt-oss-120b go run ./cmd/server
+```
+
+Watch the startup log for `SoTeach using AI provider "groq"` — that confirms
+diagnosis is being evaluated by the model (otherwise it logs `without an AI
+provider` and records the learner's words verbatim). Open the browser, pick
+class/subject/topic, begin, and answer the diagnostic question; the evaluated
+gap is surfaced as a report. Free-tier Groq limits are per-minute, so a `429`
+just means wait a few seconds and retry.
+
+**Optional: PostgreSQL.** Add `-dsn "postgres://…"` instead of (or in addition
+to) `-data`. The gated Postgres store tests need `SOTEACH_TEST_DSN`.
+
+Switching AI companies later is a config change: point `SOTEACH_AI_PROVIDER`
+at another supported provider name — the tutoring logic never changes
+(Agent.md §38).
+
 This README is the single source of truth for the team. It merges three
 source documents — the business blueprint, the product overview, and a
 real observed sample tutoring session — into one build-ready spec. Point
