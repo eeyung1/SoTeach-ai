@@ -1703,7 +1703,8 @@ Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
   provider is set, SubmitDiagnosis runs Diagnose and stores the validated
   result; GET /diagnosis surfaces a learner/parent gap report. A concrete Groq
   adapter is live behind the provider selector (SOTEACH_AI_PROVIDER); other
-  vendors plug in behind the same interface.
+  vendors plug in behind the same interface. The web client shows the gap
+  report to the learner after the diagnostic answer (funnel step).
 - The tutor teaches the gap after repeated wrong answers (streak >= 2) and
   honors stop/quit/exit/enough as a learner exit that allows a fresh begin
   (README §9).
