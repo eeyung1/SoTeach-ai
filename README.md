@@ -2,7 +2,7 @@
 
 **Status:** Stage 1 (tutoring engine + backend API) and the core of Stage 2
 (a minimal web client) are implemented and test-verified for the narrow MVP
-slice — 85 automated tests green, plus a manually verified full tutoring
+slice — 93 automated tests green, plus a manually verified full tutoring
 cycle in a real browser. The core loop from [Section 2](#2-the-core-learning-loop-this-is-the-product--read-this-section-fully-before-writing-tutor-logic)
 (DIAGNOSE → TEACH → PRACTICE → VERIFY → LOOP/CLOSE), the required state
 machine ([Section 6](#6-required-state-machine)), the interaction rules from
@@ -10,9 +10,9 @@ machine ([Section 6](#6-required-state-machine)), the interaction rules from
 (including deterministic Mathematics answer-checking), the AI-provider
 boundary, a session store, a thin REST/JSON HTTP API, and a plain
 HTML/CSS/JS browser client are built in Go + web (`session/`, `ai/`, `tutor/`,
-`api/`, `web/`, `cmd/`, `tests/`). A learner begins Mathematics → Addition in
-the browser and is guided through diagnose → practice → verify → mastery with
-no engineer intervention. Sessions persist durably to a file-backed store
+`api/`, `web/`, `cmd/`, `tests/`). A learner picks a grade band, subject, and topic from the server-owned
+`/curriculum` catalog in the browser, then is guided through diagnose →
+practice → verify → mastery with no engineer intervention. Sessions persist durably to a file-backed store
 (`FileStore`) and survive server restarts; PostgreSQL remains the planned
 long-term store. Not yet built: PWA/offline (Stage 3) and native mobile
 (Stage 4). Delivery architecture and build stages live in

@@ -1675,7 +1675,7 @@ tutor/    — application layer that owns the loop: BeginTopic, SubmitDiagnosis,
 api/      — thin REST/JSON HTTP boundary over the tutor and store (Agent.md §19)
 web/      — embedded Stage 2 web client (plain HTML/CSS/JS)
 cmd/server — runnable server: API + static web on one origin
-tests/    — 85 behavior tests, all passing via `go test ./tests/`
+tests/    — 93 behavior tests, all passing via `go test ./tests/`
 
 Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
 - The full server-owned loop runs over HTTP: begin -> diagnose -> practice ->
@@ -1697,6 +1697,8 @@ Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
   store, and HTTP layers (README §6)
 - Durable persistence: sessions survive a restart via the file-backed
   FileStore behind the Store contract (Agent.md §20)
+- Server-owned curriculum: GET /curriculum lists subjects/topics and the
+  grade bands; begin captures the learner's grade band (README §4/§10)
 - Grade-band validation: only Primary 4-6, JSS1-3, SSS1-3 (README §4, §10)
 - AI-validated diagnosis: malformed results rejected, provider failure leaves
   the session untouched (Agent.md §40-42)
@@ -1711,9 +1713,9 @@ Remaining before this backend is fully closed out:
 
 Deferred product gaps (noted, not yet built):
 
-- Subject/topic picker and grade-band/age capture in the web client — the UI
-  hardcodes Mathematics → Addition and the engine content is not age-
-  calibrated yet.
+- Age calibration of content: the web client now captures the grade band and
+  offers a server-owned subject/topic picker, but the engine's content is not
+  yet calibrated to the learner's band.
 - Wrong answers loop to a fresh question indefinitely: no teach-on-repeated-
   wrong, no attempt cap, and no learner stop/quit affordance until the loop
   closes correctly.
