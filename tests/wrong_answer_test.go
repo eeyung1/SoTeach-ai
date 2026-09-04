@@ -13,7 +13,7 @@ import (
 func startPracticing(t *testing.T, store *session.MemoryStore, learner string) *tutor.Tutor {
 	t.Helper()
 	tut := tutor.NewTutor(store)
-	if _, err := tut.BeginTopic(learner, "Mathematics", "Addition"); err != nil {
+	if _, err := tut.BeginTopic(learner, "Mathematics", "Addition", "JSS1-3"); err != nil {
 		t.Fatalf("expected begin to succeed, got error: %v", err)
 	}
 	if _, err := tut.SubmitDiagnosis(learner, "I can add single digits"); err != nil {
@@ -99,7 +99,7 @@ func TestServerStopEndsAttemptAndAllowsFreshBegin(t *testing.T) {
 	}
 
 	// Beginning the same topic starts fresh (diagnosis is re-opened).
-	if _, err := tut.BeginTopic("Amaka", "Mathematics", "Addition"); err != nil {
+	if _, err := tut.BeginTopic("Amaka", "Mathematics", "Addition", "JSS1-3"); err != nil {
 		t.Fatalf("expected begin to succeed after stopping, got error: %v", err)
 	}
 	if _, err := tut.SubmitDiagnosis("Amaka", "I can add single digits"); err != nil {

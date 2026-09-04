@@ -92,7 +92,7 @@ func (t *Tutor) SubmitDiagnosis(learner, explanation string) (Outcome, error) {
 		return Outcome{}, ErrSessionNotAwaitingDiagnosis
 	}
 
-	question, expected, err := firstPracticeQuestion(s.Topic())
+	question, expected, err := firstPracticeQuestion(s.Topic(), s.GradeBand())
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -151,11 +151,11 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 		if err := t.store.Save(s); err != nil {
 			return Outcome{}, err
 		}
-		return Outcome{Prompt: completionMessage(s.Topic())}, nil
+		return Outcome{Prompt: completionMessage(s.Topic(), s.GradeBand())}, nil
 
 	case session.AwaitingTransferCheck:
 		s.ResetWrongStreak()
-		question, expected, err := transferQuestion(s.Topic())
+		question, expected, err := transferQuestion(s.Topic(), s.GradeBand())
 		if err != nil {
 			return Outcome{}, err
 		}
@@ -169,13 +169,13 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 
 	case session.Incorrect:
 		s.NoteIncorrectAttempt()
-		question, expected, err := nextPracticeQuestion(s.Topic(), s.CurrentQuestion())
+		question, expected, err := nextPracticeQuestion(s.Topic(), s.GradeBand(), s.CurrentQuestion())
 		if err != nil {
 			return Outcome{}, err
 		}
 		if s.WrongStreak() >= wrongThreshold {
 			// Repeatedly wrong: teach the gap, then ask again (README §9).
-			teach := explanation(s.Topic())
+			teach := explanation(s.Topic(), s.GradeBand())
 			s.Teach(teach)
 			s.ResetWrongStreak()
 			if err := s.AskQuestion(question, expected); err != nil {
@@ -196,8 +196,8 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 
 	case session.Uncertain:
 		s.ResetWrongStreak()
-		teach := explanation(s.Topic())
-		question, expected, err := nextPracticeQuestion(s.Topic(), s.CurrentQuestion())
+		teach := explanation(s.Topic(), s.GradeBand())
+		question, expected, err := nextPracticeQuestion(s.Topic(), s.GradeBand(), s.CurrentQuestion())
 		if err != nil {
 			return Outcome{}, err
 		}
@@ -217,25 +217,30 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 
 // BeginTopic starts (or resumes) a learner's session on a topic — the
 // server-side entry to the loop (README §6, SELECT_SUBJECT -> SELECT_TOPIC ->
-// DIAGNOSE). A thin client never chooses the diagnostic wording; the server
-// selects subject/topic and returns the first thing the learner should
-// respond to.
+// DIAGNOSE). The grade band is set up-front so even the first diagnostic
+// prompt is calibrated to the learner's age band (README §4/§13). A thin
+// client never chooses the diagnostic wording; the server selects
+// subject/topic and returns the first thing the learner should respond to.
 //
 // Beginning a topic the learner already has in progress resumes it at the
 // correct state rather than repeating diagnosis (README §6): a pending
 // question is returned, and already-recorded mastery is reported, not reset.
-// A topic with no server-side content is rejected without creating a session
-// (README §5).
-func (t *Tutor) BeginTopic(learner, subject, topic string) (Outcome, error) {
-	prompt, err := diagnosticPrompt(topic)
-	if err != nil {
-		return Outcome{}, err
-	}
-
+// An invalid grade band or a topic with no server-side content is rejected
+// without persisting a session (README §5).
+func (t *Tutor) BeginTopic(learner, subject, topic, gradeBand string) (Outcome, error) {
 	s, err := t.store.Load(learner)
 	if errors.Is(err, session.ErrSessionNotFound) {
 		s = session.New(learner)
 	} else if err != nil {
+		return Outcome{}, err
+	}
+
+	if err := s.SetGradeBand(gradeBand); err != nil {
+		return Outcome{}, err
+	}
+
+	prompt, err := diagnosticPrompt(topic, gradeBand)
+	if err != nil {
 		return Outcome{}, err
 	}
 
@@ -398,83 +403,141 @@ type qa struct {
 	expectedAnswer string
 }
 
-// additionPracticeQuestions is the ordered set of practice questions for the
-// Addition topic. Content is deliberately small (README §5) and grows with
-// the concept set.
-var additionPracticeQuestions = []qa{
-	{question: "What is 7 + 3?", expectedAnswer: "10"},
-	{question: "What is 4 + 6?", expectedAnswer: "10"},
-	{question: "What is 2 + 5?", expectedAnswer: "7"},
+// topicContent is the full set of learner-facing content for one topic, in one
+// grade band's voice (README §4 / Agent.md §13 — age calibration is a product
+// and safety requirement, not cosmetic).
+type topicContent struct {
+	diagnosticPrompt string
+	explanation      string
+	completion       string
+	practice         []qa
+	transfer         qa
 }
 
-func practiceQuestions(topic string) ([]qa, error) {
+// defaultBand is the fallback for an empty/unknown grade band. It carries the
+// wording that existed before calibration, so existing sessions and tests see
+// exactly today's strings.
+const defaultBand = "JSS1-3"
+
+// additionByBand holds the Addition content in each of the three grade bands.
+// Answers stay deterministic numbers so checking is unchanged; only the voice
+// differs.
+var additionByBand = map[string]topicContent{
+	"Primary 4-6": {
+		diagnosticPrompt: "Let's practise adding. First, tell me in your own words: can you already add small numbers, like 2 + 2?",
+		explanation:      "Adding means putting two groups together and counting everything you have. If you have 4 sweets and someone gives you 2 more, you count them all: 5, 6 — that is 6 sweets.",
+		completion:       "That's right! You have mastered adding numbers.",
+		practice: []qa{
+			{question: "You have 7 sweets and a friend gives you 3 more. How many sweets do you have now?", expectedAnswer: "10"},
+			{question: "There are 4 birds on a tree and 6 more land on it. How many birds are there now?", expectedAnswer: "10"},
+			{question: "Ade reads 2 books on Monday and 5 books on Tuesday. How many books did he read altogether?", expectedAnswer: "7"},
+		},
+		transfer: qa{question: "Mummy bakes 5 buns and then bakes 6 more. How many buns does she bake altogether?", expectedAnswer: "11"},
+	},
+	"JSS1-3": {
+		diagnosticPrompt: "What do you already know about addition?",
+		explanation:      "Addition means putting two groups together and counting all the items to find the total.",
+		completion:       "That's right! You have mastered Addition.",
+		practice: []qa{
+			{question: "What is 7 + 3?", expectedAnswer: "10"},
+			{question: "What is 4 + 6?", expectedAnswer: "10"},
+			{question: "What is 2 + 5?", expectedAnswer: "7"},
+		},
+		transfer: qa{question: "What is 5 + 6?", expectedAnswer: "11"},
+	},
+	"SSS1-3": {
+		diagnosticPrompt: "Before we proceed, explain in your own words what you understand by the addition operation and the properties you know, such as commutativity.",
+		explanation:      "Addition is a binary operation that combines two numbers, called addends, into a single total known as the sum. For example, in 7 + 3 = 10, 7 and 3 are the addends and 10 is the sum. Addition is commutative: 7 + 3 = 3 + 7.",
+		completion:       "Correct. You have demonstrated mastery of addition.",
+		practice: []qa{
+			{question: "Evaluate: 7 + 3.", expectedAnswer: "10"},
+			{question: "Find the sum of 4 and 6.", expectedAnswer: "10"},
+			{question: "Compute: 2 + 5.", expectedAnswer: "7"},
+		},
+		transfer: qa{question: "Determine the value of 5 + 6.", expectedAnswer: "11"},
+	},
+}
+
+// contentFor returns the content bundle for topic in band. Only Addition has
+// content yet (README §5); an empty/unknown band falls back to the JSS1-3
+// bundle so the pre-calibration wording is preserved.
+func contentFor(topic, band string) (topicContent, error) {
 	if topic != "Addition" {
-		return nil, ErrTopicNotYetSupported
+		return topicContent{}, ErrTopicNotYetSupported
 	}
-	return additionPracticeQuestions, nil
+	if c, ok := additionByBand[band]; ok {
+		return c, nil
+	}
+	return additionByBand[defaultBand], nil
 }
 
-// firstPracticeQuestion is the first practice question a learner gets for a
-// topic, with its deterministic expected answer.
-func firstPracticeQuestion(topic string) (question, expectedAnswer string, err error) {
-	qs, err := practiceQuestions(topic)
+// firstPracticeQuestion returns the first practice question for topic/band,
+// with its deterministic expected answer.
+func firstPracticeQuestion(topic, band string) (question, expectedAnswer string, err error) {
+	c, err := contentFor(topic, band)
 	if err != nil {
 		return "", "", err
 	}
-	return qs[0].question, qs[0].expectedAnswer, nil
+	return c.practice[0].question, c.practice[0].expectedAnswer, nil
 }
 
-// nextPracticeQuestion returns a practice question different from last for a
-// topic, so an incorrect or uncertain answer loops back to a fresh question
-// for the same gap rather than repeating the identical one.
-func nextPracticeQuestion(topic, last string) (question, expectedAnswer string, err error) {
-	qs, err := practiceQuestions(topic)
+// nextPracticeQuestion returns a practice question different from last for
+// topic/band, so an incorrect or uncertain answer loops back to a fresh
+// question for the same gap rather than repeating the identical one.
+func nextPracticeQuestion(topic, band, last string) (question, expectedAnswer string, err error) {
+	c, err := contentFor(topic, band)
 	if err != nil {
 		return "", "", err
 	}
-	for _, q := range qs {
+	for _, q := range c.practice {
 		if q.question != last {
 			return q.question, q.expectedAnswer, nil
 		}
 	}
-	return qs[0].question, qs[0].expectedAnswer, nil
+	return c.practice[0].question, c.practice[0].expectedAnswer, nil
 }
 
 // transferQuestion is the verification question posed after a correct answer
-// (README §2 Stage 4 VERIFY). It is deliberately different from every
-// practice question, so the domain's distinctness rule
-// (ErrTransferQuestionNotDistinct) never trips.
-func transferQuestion(topic string) (question, expectedAnswer string, err error) {
-	if topic != "Addition" {
-		return "", "", ErrTopicNotYetSupported
+// (README §2 Stage 4 VERIFY). It is deliberately different from every practice
+// question, so the domain's distinctness rule (ErrTransferQuestionNotDistinct)
+// never trips.
+func transferQuestion(topic, band string) (question, expectedAnswer string, err error) {
+	c, err := contentFor(topic, band)
+	if err != nil {
+		return "", "", err
 	}
-	return "What is 5 + 6?", "11", nil
+	return c.transfer.question, c.transfer.expectedAnswer, nil
 }
 
 // explanation is the plain-language explanation served to a learner who is
-// uncertain, before a fresh question is asked (README §9).
-func explanation(topic string) string {
-	if topic == "Addition" {
-		return "Addition means putting two groups together and counting all the items to find the total."
+// uncertain or repeatedly wrong, before a fresh question is asked (README §9),
+// calibrated to the learner's band.
+func explanation(topic, band string) string {
+	c, err := contentFor(topic, band)
+	if err != nil {
+		return ""
 	}
-	return ""
+	return c.explanation
 }
 
 // completionMessage is what the learner is told when a concept is verified
-// mastered (README §2, LOOP OR CLOSE: briefly confirm mastery and stop).
-func completionMessage(topic string) string {
-	return "That's right! You have mastered " + topic + "."
+// mastered (README §2, LOOP OR CLOSE), in the learner's band's voice.
+func completionMessage(topic, band string) string {
+	c, err := contentFor(topic, band)
+	if err != nil {
+		return ""
+	}
+	return c.completion
 }
 
 // diagnosticPrompt is the server-owned opening question of the DIAGNOSE stage
-// (README §2 Stage 1) for a topic.
-func diagnosticPrompt(topic string) (string, error) {
-	switch topic {
-	case "Addition":
-		return "What do you already know about addition?", nil
-	default:
-		return "", ErrTopicNotYetSupported
+// (README §2 Stage 1) for a topic, calibrated to the learner's band.
+func diagnosticPrompt(topic, band string) (string, error) {
+	c, err := contentFor(topic, band)
+	if err != nil {
+		return "", err
 	}
+	return c.diagnosticPrompt, nil
 }
 
 // Subject is one curriculum subject the server can teach, with its topics.

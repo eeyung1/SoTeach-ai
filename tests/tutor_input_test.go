@@ -17,7 +17,7 @@ func TestApplyInputRunsFullDiagnosePracticeVerifyLoop(t *testing.T) {
 	store := session.NewMemoryStore()
 	tut := tutor.NewTutor(store)
 
-	if _, err := tut.BeginTopic("Amaka", "Mathematics", "Addition"); err != nil {
+	if _, err := tut.BeginTopic("Amaka", "Mathematics", "Addition", "JSS1-3"); err != nil {
 		t.Fatalf("expected begin to succeed, got error: %v", err)
 	}
 
@@ -64,7 +64,7 @@ func TestApplyInputRoutesIncorrectAnswerBackToPractice(t *testing.T) {
 	store := session.NewMemoryStore()
 	tut := tutor.NewTutor(store)
 
-	if _, err := tut.BeginTopic("Amaka", "Mathematics", "Addition"); err != nil {
+	if _, err := tut.BeginTopic("Amaka", "Mathematics", "Addition", "JSS1-3"); err != nil {
 		t.Fatalf("expected begin to succeed, got error: %v", err)
 	}
 	if _, err := tut.ApplyInput("Amaka", "I can add single digits"); err != nil {
@@ -96,7 +96,7 @@ func TestApplyInputRejectsWhenNothingAwaiting(t *testing.T) {
 	store := session.NewMemoryStore()
 	tut := tutor.NewTutor(store)
 
-	if _, err := tut.BeginTopic("Amaka", "Mathematics", "Addition"); err != nil {
+	if _, err := tut.BeginTopic("Amaka", "Mathematics", "Addition", "JSS1-3"); err != nil {
 		t.Fatalf("expected begin to succeed, got error: %v", err)
 	}
 	if _, err := tut.ApplyInput("Amaka", "I can add single digits"); err != nil {

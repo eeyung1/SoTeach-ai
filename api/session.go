@@ -176,13 +176,9 @@ func (a *sessionAPI) beginSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	outcome, err := a.tutor.BeginTopic(learner, req.Subject, req.Topic)
+	outcome, err := a.tutor.BeginTopic(learner, req.Subject, req.Topic, req.GradeBand)
 	if err != nil {
 		a.respondAction(w, learner, outcome, err)
-		return
-	}
-	if err := a.tutor.SetGradeBand(learner, req.GradeBand); err != nil {
-		writeError(w, statusForError(err), err.Error())
 		return
 	}
 	a.respondAction(w, learner, outcome, nil)

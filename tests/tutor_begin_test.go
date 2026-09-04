@@ -17,7 +17,7 @@ func TestBeginTopicStartsDiagnosisAndReturnsPrompt(t *testing.T) {
 	store := session.NewMemoryStore()
 	tut := tutor.NewTutor(store)
 
-	outcome, err := tut.BeginTopic("Amaka", "Mathematics", "Addition")
+	outcome, err := tut.BeginTopic("Amaka", "Mathematics", "Addition", "JSS1-3")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -66,7 +66,7 @@ func TestBeginTopicResumesMidSessionWithoutRepeatingDiagnosis(t *testing.T) {
 	store.Save(original)
 
 	tut := tutor.NewTutor(store)
-	outcome, err := tut.BeginTopic("Amaka", "Mathematics", "Addition")
+	outcome, err := tut.BeginTopic("Amaka", "Mathematics", "Addition", "JSS1-3")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -118,7 +118,7 @@ func TestBeginMasteredTopicDoesNotResetMastery(t *testing.T) {
 	store.Save(original)
 
 	tut := tutor.NewTutor(store)
-	outcome, err := tut.BeginTopic("Amaka", "Mathematics", "Addition")
+	outcome, err := tut.BeginTopic("Amaka", "Mathematics", "Addition", "JSS1-3")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -147,7 +147,7 @@ func TestBeginTopicRejectsUnsupportedTopic(t *testing.T) {
 	store := session.NewMemoryStore()
 	tut := tutor.NewTutor(store)
 
-	_, err := tut.BeginTopic("Amaka", "Mathematics", "Fractions")
+	_, err := tut.BeginTopic("Amaka", "Mathematics", "Fractions", "JSS1-3")
 	if err == nil {
 		t.Fatal("expected an unsupported topic to be rejected")
 	}
