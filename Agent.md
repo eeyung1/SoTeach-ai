@@ -1675,7 +1675,7 @@ tutor/    — application layer that owns the loop: BeginTopic, SubmitDiagnosis,
 api/      — thin REST/JSON HTTP boundary over the tutor and store (Agent.md §19)
 web/      — embedded Stage 2 web client (plain HTML/CSS/JS)
 cmd/server — runnable server: API + static web on one origin
-tests/    — 93 behavior tests, all passing via `go test ./tests/`
+tests/    — 97 behavior tests, all passing via `go test ./tests/`
 
 Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
 - The full server-owned loop runs over HTTP: begin -> diagnose -> practice ->
@@ -1699,6 +1699,10 @@ Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
   FileStore behind the Store contract (Agent.md §20)
 - Server-owned curriculum: GET /curriculum lists subjects/topics and the
   grade bands; begin captures the learner's grade band (README §4/§10)
+- AI-evaluated diagnosis is wired into the loop (Agent.md §38-40): when a
+  provider is set, SubmitDiagnosis runs Diagnose and stores the validated
+  result; GET /diagnosis surfaces a learner/parent gap report. A concrete
+  vendor provider is still to be plugged in.
 - Grade-band validation: only Primary 4-6, JSS1-3, SSS1-3 (README §4, §10)
 - AI-validated diagnosis: malformed results rejected, provider failure leaves
   the session untouched (Agent.md §40-42)

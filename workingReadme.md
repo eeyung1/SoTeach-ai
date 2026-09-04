@@ -308,7 +308,7 @@ done-condition is met**, per the original README's workflow discipline
 > checking), the AI-provider boundary, a session store (in-memory
 > `MemoryStore` for tests, durable file-backed `FileStore` for the server),
 > and a thin REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) —
-> proven by 93 automated tests, with the full loop drivable over the API.
+> proven by 97 automated tests, with the full loop drivable over the API.
 > Sessions survive server restarts via `FileStore`; PostgreSQL remains the
 > planned long-term store. Stage 2's web client (`web/` + `cmd/server`)
 > drives the full cycle in a browser (happy path verified manually). Not yet
