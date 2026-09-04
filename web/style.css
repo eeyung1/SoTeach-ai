@@ -37,16 +37,31 @@ form {
   align-items: center;
 }
 
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 12rem;
+}
+
 label {
   font-weight: 600;
 }
 
-input[type="text"] {
+input[type="text"],
+select {
   flex: 1 1 16rem;
   font-size: 1.1rem;
   padding: 0.6rem 0.75rem;
   border: 1px solid #cbd5e0;
   border-radius: 0.4rem;
+  background: #fff;
+  color: inherit;
+}
+
+.field select {
+  width: 100%;
+  flex: none;
 }
 
 button {

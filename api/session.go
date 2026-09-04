@@ -25,6 +25,7 @@ func AddRoutes(mux *http.ServeMux, store session.Store) {
 	a := &sessionAPI{store: store, tutor: tutor.NewTutor(store)}
 
 	mux.HandleFunc("GET /learners/{learner}/session", a.resumeSession)
+	mux.HandleFunc("GET /curriculum", a.curriculum)
 	mux.HandleFunc("POST /learners/{learner}/begin", a.beginSession)
 	mux.HandleFunc("POST /learners/{learner}/input", a.submitInput)
 }
@@ -124,8 +125,9 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 
 // beginRequest is the body of POST /learners/{learner}/begin.
 type beginRequest struct {
-	Subject string `json:"subject"`
-	Topic   string `json:"topic"`
+	Subject   string `json:"subject"`
+	Topic     string `json:"topic"`
+	GradeBand string `json:"gradeBand"`
 }
 
 // inputRequest is the body of POST /learners/{learner}/input.
@@ -153,13 +155,29 @@ func (a *sessionAPI) beginSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "request body must be valid JSON")
 		return
 	}
-	if req.Subject == "" || req.Topic == "" {
-		writeError(w, http.StatusBadRequest, "subject and topic are required")
+	if req.Subject == "" || req.Topic == "" || req.GradeBand == "" {
+		writeError(w, http.StatusBadRequest, "subject, topic, and gradeBand are required")
+		return
+	}
+	if !curriculumContains(req.Subject, req.Topic) {
+		writeError(w, http.StatusUnprocessableEntity, "that subject/topic is not yet supported")
+		return
+	}
+	if !isValidGradeBand(req.GradeBand) {
+		writeError(w, http.StatusUnprocessableEntity, "grade band must be one of: Primary 4-6, JSS1-3, SSS1-3")
 		return
 	}
 
 	outcome, err := a.tutor.BeginTopic(learner, req.Subject, req.Topic)
-	a.respondAction(w, learner, outcome, err)
+	if err != nil {
+		a.respondAction(w, learner, outcome, err)
+		return
+	}
+	if err := a.tutor.SetGradeBand(learner, req.GradeBand); err != nil {
+		writeError(w, statusForError(err), err.Error())
+		return
+	}
+	a.respondAction(w, learner, outcome, nil)
 }
 
 // submitInput implements POST /learners/{learner}/input: it applies the
@@ -200,6 +218,42 @@ func (a *sessionAPI) respondAction(w http.ResponseWriter, learner string, outcom
 	writeJSON(w, http.StatusOK, actionResponse{Prompt: outcome.Prompt, State: stateName(s.State())})
 }
 
+// curriculum implements GET /curriculum: the server-owned catalog a client
+// renders (subjects + topics) plus the valid grade bands (README §4). Clients
+// never decide what can be taught (workingReadme §3).
+func (a *sessionAPI) curriculum(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"subjects":   tutor.Curriculum(),
+		"gradeBands": session.GradeBands(),
+	})
+}
+
+// curriculumContains reports whether the server currently has content for the
+// given subject/topic pair.
+func curriculumContains(subject, topic string) bool {
+	for _, s := range tutor.Curriculum() {
+		if s.Name != subject {
+			continue
+		}
+		for _, t := range s.Topics {
+			if t == topic {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isValidGradeBand reports whether band is one of the defined grade bands.
+func isValidGradeBand(band string) bool {
+	for _, b := range session.GradeBands() {
+		if b == band {
+			return true
+		}
+	}
+	return false
+}
+
 // statusForError maps a domain/tutor error to the HTTP status a client should
 // see: 404 for an unknown learner, 409 when the session is in a state that
 // cannot accept the request, 422 for unsupported content, 500 otherwise.
@@ -211,7 +265,8 @@ func statusForError(err error) int {
 		errors.Is(err, tutor.ErrNothingAwaitingInput),
 		errors.Is(err, tutor.ErrSessionNotAwaitingDiagnosis):
 		return http.StatusConflict
-	case errors.Is(err, tutor.ErrTopicNotYetSupported):
+	case errors.Is(err, tutor.ErrTopicNotYetSupported),
+		errors.Is(err, session.ErrInvalidGradeBand):
 		return http.StatusUnprocessableEntity
 	default:
 		return http.StatusInternalServerError

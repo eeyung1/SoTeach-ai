@@ -70,6 +70,13 @@ var validGradeBands = map[string]bool{
 // value outside the three defined age bands.
 var ErrInvalidGradeBand = errors.New("grade band must be one of: Primary 4-6, JSS1-3, SSS1-3")
 
+// GradeBands returns the three defined grade/age bands (README §4) in a stable
+// order, so a server can offer them to a client and validate a learner's band
+// against a single source of truth.
+func GradeBands() []string {
+	return []string{"Primary 4-6", "JSS1-3", "SSS1-3"}
+}
+
 // Session holds the minimal state needed to satisfy the "wait for the
 // student" and "never mark correct without checking" rules (README §3).
 //

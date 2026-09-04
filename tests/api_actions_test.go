@@ -48,8 +48,9 @@ func TestBeginEndpointReturnsDiagnosticPrompt(t *testing.T) {
 	handler := api.NewHandler(store)
 
 	rec := postJSON(t, handler, http.MethodPost, "/learners/Amaka/begin", map[string]string{
-		"subject": "Mathematics",
-		"topic":   "Addition",
+		"subject":   "Mathematics",
+		"topic":     "Addition",
+		"gradeBand": "JSS1-3",
 	})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200 OK, got %d", rec.Code)
@@ -74,8 +75,9 @@ func TestInputEndpointDrivesLoopToMastery(t *testing.T) {
 	handler := api.NewHandler(store)
 
 	if rec := postJSON(t, handler, http.MethodPost, "/learners/Amaka/begin", map[string]string{
-		"subject": "Mathematics",
-		"topic":   "Addition",
+		"subject":   "Mathematics",
+		"topic":     "Addition",
+		"gradeBand": "JSS1-3",
 	}); rec.Code != http.StatusOK {
 		t.Fatalf("expected begin to succeed, got %d", rec.Code)
 	}
@@ -118,8 +120,9 @@ func TestBeginEndpointRejectsUnsupportedTopic(t *testing.T) {
 	handler := api.NewHandler(store)
 
 	rec := postJSON(t, handler, http.MethodPost, "/learners/Amaka/begin", map[string]string{
-		"subject": "Mathematics",
-		"topic":   "Fractions",
+		"subject":   "Mathematics",
+		"topic":     "Fractions",
+		"gradeBand": "JSS1-3",
 	})
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected 422 for an unsupported topic, got %d", rec.Code)

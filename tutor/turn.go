@@ -242,6 +242,21 @@ func (t *Tutor) ApplyInput(learner, input string) (Outcome, error) {
 	}
 }
 
+// SetGradeBand records the learner's grade/age band on their saved session
+// (README §4/§10) — learner-level state used for calibration. A band outside
+// the defined set is rejected via session.ErrInvalidGradeBand and leaves the
+// session unchanged. The learner must already have a begun session.
+func (t *Tutor) SetGradeBand(learner, band string) error {
+	s, err := t.store.Load(learner)
+	if err != nil {
+		return err
+	}
+	if err := s.SetGradeBand(band); err != nil {
+		return err
+	}
+	return t.store.Save(s)
+}
+
 // qa pairs a question with its deterministic expected answer.
 type qa struct {
 	question       string
@@ -325,4 +340,19 @@ func diagnosticPrompt(topic string) (string, error) {
 	default:
 		return "", ErrTopicNotYetSupported
 	}
+}
+
+// Subject is one curriculum subject the server can teach, with its topics.
+type Subject struct {
+	Name   string   `json:"name"`
+	Topics []string `json:"topics"`
+}
+
+// Curriculum returns the subjects and topics the server currently has content
+// for (workingReadme §3: the curriculum is server-owned; clients render it,
+// they never decide it). This is the narrow MVP set — one subject, one topic
+// (README §5) — and grows as content is added. It must stay in sync with the
+// content helpers above.
+func Curriculum() []Subject {
+	return []Subject{{Name: "Mathematics", Topics: []string{"Addition"}}}
 }
