@@ -3,6 +3,7 @@ package tutor
 import (
 	"errors"
 
+	"soteach/ai"
 	"soteach/session"
 )
 
@@ -33,6 +34,10 @@ var ErrUnexpectedAnswerState = errors.New("tutor does not know how to continue f
 // ignored or misrouted.
 var ErrNothingAwaitingInput = errors.New("no input is expected from the learner right now")
 
+// ErrNoDiagnosisYet is returned when a diagnosis report is requested before
+// any diagnosis has been completed for the learner.
+var ErrNoDiagnosisYet = errors.New("no diagnosis recorded yet for this learner")
+
 // Tutor is the application layer that owns the tutoring loop (README §2;
 // Agent.md §11): it decides what happens next in a learner's session and what
 // the learner is asked or told. A thin client never sequences the loop — it
@@ -42,12 +47,22 @@ var ErrNothingAwaitingInput = errors.New("no input is expected from the learner 
 // deterministic stub for now, to be replaced by AI-generated content when a
 // concrete requirement exists — Agent.md §38).
 type Tutor struct {
-	store session.Store
+	store    session.Store
+	provider ai.AIProvider
 }
 
-// NewTutor creates a Tutor over the given session store.
+// NewTutor creates a Tutor over the given session store, with no AI provider
+// (diagnosis records the learner's explanation verbatim).
 func NewTutor(store session.Store) *Tutor {
 	return &Tutor{store: store}
+}
+
+// NewAITutor creates a Tutor that evaluates diagnosis through provider
+// (Agent.md §38-40): SubmitDiagnosis runs provider.Diagnose on the learner's
+// explanation and stores the validated DiagnosticResult. A nil provider keeps
+// the verbatim behavior of NewTutor.
+func NewAITutor(store session.Store, provider ai.AIProvider) *Tutor {
+	return &Tutor{store: store, provider: provider}
 }
 
 // Outcome describes what the tutor says to the learner after an action.
@@ -76,6 +91,15 @@ func (t *Tutor) SubmitDiagnosis(learner, explanation string) (Outcome, error) {
 		return Outcome{}, err
 	}
 
+	if t.provider != nil {
+		result, err := t.provider.Diagnose(s.Topic(), explanation)
+		if err != nil {
+			return Outcome{}, err
+		}
+		if err := s.RecordDiagnosticResult(result); err != nil {
+			return Outcome{}, err
+		}
+	}
 	s.RecordDiagnosticResponse(explanation)
 	if err := s.AskQuestion(question, expected); err != nil {
 		return Outcome{}, err
@@ -255,6 +279,54 @@ func (t *Tutor) SetGradeBand(learner, band string) error {
 		return err
 	}
 	return t.store.Save(s)
+}
+
+// DiagnosisReport is the learner/parent-facing summary of what diagnosis
+// found — the free "value moment" of the acquisition funnel (Blueprint/
+// monetization_funnel.md): the learner's own words plus, when an AI evaluation
+// was recorded, the structured gap. Evaluation fields are empty when no
+// provider was used.
+type DiagnosisReport struct {
+	Learner           string   `json:"learner"`
+	GradeBand         string   `json:"gradeBand"`
+	Subject           string   `json:"subject"`
+	Topic             string   `json:"topic"`
+	Finding           string   `json:"finding"`
+	Concept           string   `json:"concept,omitempty"`
+	KnownSkills       []string `json:"knownSkills,omitempty"`
+	Gaps              []string `json:"gaps,omitempty"`
+	Misconceptions    []string `json:"misconceptions,omitempty"`
+	Confidence        float64  `json:"confidence,omitempty"`
+	RecommendedAction string   `json:"recommendedAction,omitempty"`
+}
+
+// DiagnosticReport returns the diagnosis report for a learner whose diagnosis
+// is complete, or ErrNoDiagnosisYet if none has been recorded yet.
+func (t *Tutor) DiagnosticReport(learner string) (DiagnosisReport, error) {
+	s, err := t.store.Load(learner)
+	if err != nil {
+		return DiagnosisReport{}, err
+	}
+	if !s.DiagnosisComplete() {
+		return DiagnosisReport{}, ErrNoDiagnosisYet
+	}
+
+	report := DiagnosisReport{
+		Learner:   s.LearnerName(),
+		GradeBand: s.GradeBand(),
+		Subject:   s.Subject(),
+		Topic:     s.Topic(),
+		Finding:   s.DiagnosticFinding(),
+	}
+	if res := s.LastDiagnosticResult(); res.Concept != "" {
+		report.Concept = res.Concept
+		report.KnownSkills = res.KnownSkills
+		report.Gaps = res.Gaps
+		report.Misconceptions = res.Misconceptions
+		report.Confidence = res.Confidence
+		report.RecommendedAction = res.RecommendedAction
+	}
+	return report, nil
 }
 
 // qa pairs a question with its deterministic expected answer.

@@ -25,6 +25,7 @@ func AddRoutes(mux *http.ServeMux, store session.Store) {
 	a := &sessionAPI{store: store, tutor: tutor.NewTutor(store)}
 
 	mux.HandleFunc("GET /learners/{learner}/session", a.resumeSession)
+	mux.HandleFunc("GET /learners/{learner}/diagnosis", a.diagnosisReport)
 	mux.HandleFunc("GET /curriculum", a.curriculum)
 	mux.HandleFunc("POST /learners/{learner}/begin", a.beginSession)
 	mux.HandleFunc("POST /learners/{learner}/input", a.submitInput)
@@ -228,6 +229,21 @@ func (a *sessionAPI) curriculum(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// diagnosisReport implements GET /learners/{learner}/diagnosis: the
+// learner/parent-facing gap report (Blueprint/monetization_funnel.md). An
+// unknown learner maps to 404; a learner whose diagnosis is not yet complete
+// maps to 409.
+func (a *sessionAPI) diagnosisReport(w http.ResponseWriter, r *http.Request) {
+	learner := r.PathValue("learner")
+
+	report, err := a.tutor.DiagnosticReport(learner)
+	if err != nil {
+		writeError(w, statusForError(err), err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, report)
+}
+
 // curriculumContains reports whether the server currently has content for the
 // given subject/topic pair.
 func curriculumContains(subject, topic string) bool {
@@ -263,7 +279,8 @@ func statusForError(err error) int {
 		return http.StatusNotFound
 	case errors.Is(err, tutor.ErrNoQuestionPending),
 		errors.Is(err, tutor.ErrNothingAwaitingInput),
-		errors.Is(err, tutor.ErrSessionNotAwaitingDiagnosis):
+		errors.Is(err, tutor.ErrSessionNotAwaitingDiagnosis),
+		errors.Is(err, tutor.ErrNoDiagnosisYet):
 		return http.StatusConflict
 	case errors.Is(err, tutor.ErrTopicNotYetSupported),
 		errors.Is(err, session.ErrInvalidGradeBand):
