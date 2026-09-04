@@ -14,9 +14,10 @@ HTML/CSS/JS browser client are built in Go + web (`session/`, `ai/`, `tutor/`,
 `/curriculum` catalog in the browser, then is guided through diagnose →
 practice → verify → mastery with no engineer intervention. Diagnosis is
 AI-evaluated behind the `AIProvider` boundary (a concrete provider still plugs
-in later) and surfaced as a learner/parent gap report. Sessions persist durably to a file-backed store
-(`FileStore`) and survive server restarts; PostgreSQL remains the planned
-long-term store. Not yet built: PWA/offline (Stage 3) and native mobile
+in later) and surfaced as a learner/parent gap report. Sessions persist
+durably — a file-backed `FileStore` is the default, and PostgreSQL is
+available behind the same store contract via the server's `-dsn` flag. Not
+yet built: PWA/offline (Stage 3) and native mobile
 (Stage 4). Delivery architecture and build stages live in
 `workingReadme.md`.
 

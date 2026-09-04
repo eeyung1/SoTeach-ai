@@ -1713,10 +1713,10 @@ Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
 
 Remaining before this backend is fully closed out:
 
-- PostgreSQL as the long-term durable store: persistence is currently a
-  file-backed FileStore (Agent.md §20, durable and restart-safe); PostgreSQL
-  is swapped in behind the same Store contract with API, tutor, and web
-  behavior unchanged.
+- Durable persistence is complete: a file-backed FileStore (default) and a
+  PostgreSQL store behind the same Store contract (server `-dsn`; its
+  integration tests are gated behind SOTEACH_TEST_DSN). API, tutor, and web
+  behavior are unchanged across stores.
 
 Deferred product gaps (noted, not yet built):
 
@@ -1732,10 +1732,10 @@ Open, non-code item (Blueprint-tracked, not a development gate):
 
 The next task:
 
-Sessions now persist durably (FileStore, restart-safe). The next feature is
-either PostgreSQL behind the same Store contract, or one of the deferred
-product gaps above. Proceed one feature at a time with the same test-first
-cycle (§3).
+Persistence is complete: FileStore (default) and PostgreSQL (server `-dsn`)
+behind the same Store contract. The next feature is age-calibrated content,
+the concrete AI provider, or one of the remaining deferred product gaps.
+Proceed one feature at a time with the same test-first cycle (§3).
 
 Do not skip directly to:
 

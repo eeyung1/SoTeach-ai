@@ -309,8 +309,9 @@ done-condition is met**, per the original README's workflow discipline
 > `MemoryStore` for tests, durable file-backed `FileStore` for the server),
 > and a thin REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) —
 > proven by 100 automated tests, with the full loop drivable over the API.
-> Sessions survive server restarts via `FileStore`; PostgreSQL remains the
-> planned long-term store. Stage 2's web client (`web/` + `cmd/server`)
+> Sessions survive server restarts via `FileStore`; PostgreSQL is also
+> available behind the same Store contract (server `-dsn`). Stage 2's web
+> client (`web/` + `cmd/server`)
 > drives the full cycle in a browser (happy path verified manually). Not yet
 > built: the later client stages (3–8). Stage 0 below is a Blueprint-tracked
 > open item that does not block development.
@@ -342,9 +343,10 @@ done-condition is met**, per the original README's workflow discipline
   durable `FileStore` for the server), and the HTTP boundary (`api/`: begin,
   input, resume) are implemented in Go and proven by 100 automated tests in
   `tests/`; the full loop runs over the API.
-- **Remaining:** PostgreSQL as the long-term durable store (currently
-  file-backed `FileStore`, per Agent.md §20) and the Stage 0 real-learner
-  item.
+- **Remaining:** the Stage 0 real-learner item (Blueprint-tracked). Durable
+  persistence is done: file-backed `FileStore` (default) and an optional
+  PostgreSQL store behind the same Store contract (server `-dsn`), per
+  Agent.md §20.
 - **Done when:** the same failure scenarios collected in Stage 0 (wrong
   answer marked correct, lost learner identity, over-repetition, etc.) no
   longer occur when driven through the API.
