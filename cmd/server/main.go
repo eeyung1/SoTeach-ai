@@ -2,18 +2,26 @@
 // the Stage 2 web client served from the same origin — one process, no CORS
 // (workingReadme §3.2, §3.5, §8 Stage 2).
 //
-// Session state is persisted durably to a directory as JSON (Agent.md §20), so
-// a session survives a server restart. Run it with: go run ./cmd/server — then
-// open http://localhost:8080.
+// Session state persists durably (Agent.md §20): a file-backed store by
+// default, or PostgreSQL when -dsn is set. When an AI provider is configured
+// via SOTEACH_AI_PROVIDER (+ SOTEACH_AI_API_KEY, optional SOTEACH_AI_MODEL),
+// diagnosis is evaluated by that provider behind the ai.AIProvider boundary
+// (Agent.md §38); otherwise the tutor records the learner's explanation
+// verbatim.
+//
+// Run with: go run ./cmd/server — then open http://localhost:8080.
 package main
 
 import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 
+	"soteach/ai/provider"
 	"soteach/api"
 	"soteach/session"
+	"soteach/tutor"
 	"soteach/web"
 )
 
@@ -41,8 +49,24 @@ func main() {
 		log.Printf("SoTeach using file session store (%s)", *dataDir)
 	}
 
+	var tut *tutor.Tutor
+	if name := os.Getenv("SOTEACH_AI_PROVIDER"); name != "" {
+		p, err := provider.New(name, provider.Config{
+			APIKey: os.Getenv("SOTEACH_AI_API_KEY"),
+			Model:  os.Getenv("SOTEACH_AI_MODEL"),
+		})
+		if err != nil {
+			log.Fatalf("configure AI provider %q: %v", name, err)
+		}
+		tut = tutor.NewAITutor(store, p)
+		log.Printf("SoTeach using AI provider %q for diagnosis", name)
+	} else {
+		tut = tutor.NewTutor(store)
+		log.Printf("SoTeach running without an AI provider (verbatim diagnosis)")
+	}
+
 	mux := http.NewServeMux()
-	api.AddRoutes(mux, store)
+	api.AddRoutesWithTutor(mux, store, tut)
 	mux.Handle("/", http.FileServer(http.FS(web.Files)))
 
 	log.Printf("SoTeach listening on http://localhost%s", *addr)
