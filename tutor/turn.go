@@ -458,17 +458,23 @@ var additionByBand = map[string]topicContent{
 	},
 }
 
-// contentFor returns the content bundle for topic in band. Only Addition has
-// content yet (README §5); an empty/unknown band falls back to the JSS1-3
-// bundle so the pre-calibration wording is preserved.
+// contentFor returns the content bundle for topic in band. Topics are looked up
+// in the contentByTopic registry (content.go); a topic with no bundle is not yet
+// supported (ErrTopicNotYetSupported, README §5). An empty/unknown band falls
+// back to the JSS1-3 bundle so pre-calibration wording is preserved. Topic names
+// are globally unique across subjects, so content stays subject-agnostic.
 func contentFor(topic, band string) (topicContent, error) {
-	if topic != "Addition" {
+	byBand, ok := contentByTopic[topic]
+	if !ok {
 		return topicContent{}, ErrTopicNotYetSupported
 	}
-	if c, ok := additionByBand[band]; ok {
+	if c, ok := byBand[band]; ok {
 		return c, nil
 	}
-	return additionByBand[defaultBand], nil
+	if c, ok := byBand[defaultBand]; ok {
+		return c, nil
+	}
+	return topicContent{}, ErrTopicNotYetSupported
 }
 
 // firstPracticeQuestion returns the first practice question for topic/band,
@@ -548,9 +554,11 @@ type Subject struct {
 
 // Curriculum returns the subjects and topics the server currently has content
 // for (workingReadme §3: the curriculum is server-owned; clients render it,
-// they never decide it). This is the narrow MVP set — one subject, one topic
-// (README §5) — and grows as content is added. It must stay in sync with the
-// content helpers above.
+// they never decide it). It must stay in sync with contentByTopic (a test
+// enforces this). Mathematics leads; English Language is the second subject.
 func Curriculum() []Subject {
-	return []Subject{{Name: "Mathematics", Topics: []string{"Addition"}}}
+	return []Subject{
+		{Name: "Mathematics", Topics: []string{"Addition", "Subtraction", "Multiplication", "Division"}},
+		{Name: "English Language", Topics: []string{"Parts of Speech"}},
+	}
 }

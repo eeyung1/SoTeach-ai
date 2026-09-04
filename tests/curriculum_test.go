@@ -13,8 +13,9 @@ import (
 // TestCurriculumEndpointListsServerOwnedCatalog proves the server tells the
 // client what it can teach (workingReadme §3: clients are render/input layers
 // only; the curriculum is server-owned). GET /curriculum returns the available
-// subjects with their topics and the defined grade bands — today the narrow
-// MVP set (Mathematics → Addition; Primary 4-6, JSS1-3, SSS1-3).
+// subjects with their topics and the defined grade bands — Mathematics with its
+// addition/subtraction/multiplication/division topics plus English Language's
+// first topic, over the three grade bands (Primary 4-6, JSS1-3, SSS1-3).
 func TestCurriculumEndpointListsServerOwnedCatalog(t *testing.T) {
 	handler := api.NewHandler(session.NewMemoryStore())
 
@@ -37,25 +38,39 @@ func TestCurriculumEndpointListsServerOwnedCatalog(t *testing.T) {
 		t.Fatalf("expected a JSON body, got error: %v", err)
 	}
 
-	if len(got.Subjects) != 1 {
-		t.Fatalf("expected one subject, got %d", len(got.Subjects))
+	if len(got.Subjects) != 2 {
+		t.Fatalf("expected two subjects, got %d", len(got.Subjects))
 	}
 	if got.Subjects[0].Name != "Mathematics" {
-		t.Fatalf("expected subject Mathematics, got %q", got.Subjects[0].Name)
+		t.Fatalf("expected subject Mathematics first, got %q", got.Subjects[0].Name)
 	}
-	foundAddition := false
-	for _, topic := range got.Subjects[0].Topics {
-		if topic == "Addition" {
-			foundAddition = true
-		}
+	wantMath := []string{"Addition", "Subtraction", "Multiplication", "Division"}
+	if !equalStrings(got.Subjects[0].Topics, wantMath) {
+		t.Fatalf("expected Mathematics topics %v, got %v", wantMath, got.Subjects[0].Topics)
 	}
-	if !foundAddition {
-		t.Fatalf("expected topic Addition under Mathematics, got %v", got.Subjects[0].Topics)
+	if got.Subjects[1].Name != "English Language" {
+		t.Fatalf("expected subject English Language second, got %q", got.Subjects[1].Name)
+	}
+	if !equalStrings(got.Subjects[1].Topics, []string{"Parts of Speech"}) {
+		t.Fatalf("expected English Language topics [Parts of Speech], got %v", got.Subjects[1].Topics)
 	}
 
 	if len(got.GradeBands) != 3 {
 		t.Fatalf("expected three grade bands, got %v", got.GradeBands)
 	}
+}
+
+// equalStrings reports whether a and b hold the same strings in the same order.
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // TestBeginStoresGradeBandOnResume confirms grade band captured at begin is
