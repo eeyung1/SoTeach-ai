@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 )
 
@@ -96,6 +97,19 @@ func (f *FileStore) ConsentByLearner(learner string) (Consent, error) {
 		return Consent{}, ErrNotFound
 	}
 	return c, nil
+}
+
+func (f *FileStore) ConsentsByGuardian(email string) ([]Consent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []Consent
+	for _, c := range f.data.Consents {
+		if c.GuardianEmail == email {
+			out = append(out, c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Learner < out[j].Learner })
+	return out, nil
 }
 
 func (f *FileStore) SaveSessionToken(token, email string) error {

@@ -2,7 +2,7 @@
 
 **Status:** Stage 1 (tutoring engine + backend API) and the core of Stage 2
 (a minimal web client) are implemented and test-verified for the narrow MVP
-slice — 130 automated tests green, plus a manually verified full tutoring
+slice — 133 automated tests green, plus a manually verified full tutoring
 cycle in a real browser. The core loop from [Section 2](#2-the-core-learning-loop-this-is-the-product--read-this-section-fully-before-writing-tutor-logic)
 (DIAGNOSE → TEACH → PRACTICE → VERIFY → LOOP/CLOSE), the required state
 machine ([Section 6](#6-required-state-machine)), the interaction rules from
@@ -358,12 +358,16 @@ questions needed real legal answers, not engineering assumptions:**
   `GET /learners/{name}/consent`) records consent as real account-flow
   state — who consented, for which learner, when, to the versioned consent
   text, with a consent token — persisted across restarts (email + bcrypt
-  password, server-issued bearer tokens; web flow at `/guardian.html`).
+  password, server-issued bearer tokens; web flow at `/guardian.html`). A
+  sample plan catalog and guardian plan selection are also in as a **mock
+  checkout** (`/guardians/plans`, `/guardians/plan`, `/guardians/me`): a
+  guardian subscription covers the children they have consented for.
   **Still open, do not guess:** enforcing the gate on real data collection
   (mechanism and endpoints are in; wiring it into the anonymous demo
   session flow waits for learner accounts / a `-require-consent` runtime
-  flag), email verification, learner accounts, real payment processing and
-  plans, and the data-controller determination below needing legal sign-off.
+  flag), email verification, learner accounts, real payment processing
+  (PSP + keys; the catalog prices are sample and need sign-off), and the
+  data-controller determination below needing legal sign-off.
 
 ---
 

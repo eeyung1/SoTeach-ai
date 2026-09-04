@@ -42,21 +42,23 @@ it is the product's demonstration moment, not a loss leader.
   read-only presentation, not new engine state. It is the same layer that
   becomes the Parent/Teacher view (workingReadme.md §4, Stage 7).
 
-## 4. What this idea depends on (unbuilt today)
+## 4. What this idea depends on
 
-- **Real "model evaluates" diagnosis.** The engine currently records the
-  learner's explanation verbatim (`SubmitDiagnosis` → `RecordDiagnosticResponse`).
-  The AI `Diagnose` capability exists behind the `AIProvider` boundary but is
-  not yet wired into the live loop. This is the concrete requirement that
-  would justify expanding the provider (explain/generate/report capabilities)
-  per Agent.md §38 — added only when required, with structured, validated
+- **Real "model evaluates" diagnosis.** Built: `SubmitDiagnosis` runs an
+  AI `Diagnose` behind the `AIProvider` boundary (Groq adapter) and the
+  evaluated gap is surfaced as a learner/parent report (with the learner's
+  own words recorded verbatim when no provider is configured). Expanding the
+  provider to explain/generate/report capabilities stays per Agent.md §38 —
+  added only when a concrete requirement exists, with structured, validated
   output (§39-40) and tests that do not need a live model (§43).
 - **Account / signup model for a children's product.** The payer is the
   parent/guardian, not the child. Guarded by verifiable consent (README §10;
   workingReadme.md §6) and store-compliance work (Stage 5) before any real
-  payment flow. Authentication and payments remain on Agent.md §50's
-  do-not-skip list until the core is durable — the core now is (Stages 1-2
-  done), so these become legitimate later stages, not the next commits.
+  payment flow. Guardian signup + verifiable consent are built, and a sample
+  plan catalog with a guardian plan selection now lands as a **mock checkout**
+  (`/guardians/plans`, `/guardians/plan`, `/guardians/me`) — no money is taken.
+  Real PSP integration, enforcement of the gate on real collection, and
+  pricing sign-off remain the compliance-gated stage.
 - **The content library ("and many more concepts").** The server now teaches
   a small deterministic, age-calibrated set — Mathematics (Addition,
   Subtraction, Multiplication, Division) and the first English Language
@@ -75,13 +77,15 @@ it is the product's demonstration moment, not a loss leader.
 Not ordered against the current backlog, but each step is independently
 valuable and testable before any payments exist:
 
-1. Subject/topic + grade-band picker in the web client (already a noted gap).
+1. Subject/topic + grade-band picker in the web client — done (server-owned
+   catalog; Mathematics topics + English Language, three grade bands).
 2. Wire AI-validated diagnosis into the live loop so the gap is evaluated,
-   not just recorded (capability already exists behind the boundary).
+   not just recorded — done (Groq adapter + in-browser gap report).
 3. A diagnostic gap report view (learner/parent-readable) derived from the
-   result — structured and testable without AI text.
-4. Only then: guardian/signup + consent gate, plan selection, payment —
-   as its own properly-scoped, compliance-reviewed stage.
+   result — done (read-only presentation of the recorded finding).
+4. Guardian/signup + consent gate — done (slice 1). Plan selection — done as
+   a **mock checkout** (slice 2, no money). Payment (real PSP, enforcement,
+   pricing sign-off) — still the compliance-reviewed stage.
 
 ## 6. Open questions to resolve before building
 

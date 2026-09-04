@@ -124,3 +124,96 @@ func TestConsentRecordsVerifiableFields(t *testing.T) {
 		t.Fatalf("expected the latest consent to win, got %q", got.GuardianEmail)
 	}
 }
+
+// TestSubscribeRecordsPlanAndRejectsUnknown covers the plan/subscription path:
+// a valid plan is recorded (id, status, timestamp) and survives a read back; an
+// unknown plan or missing account is rejected and leaves nothing recorded.
+func TestSubscribeRecordsPlanAndRejectsUnknown(t *testing.T) {
+	svc := newTestAccounts()
+	if _, err := svc.Register("parent@example.com", "password123"); err != nil {
+		t.Fatalf("expected registration to succeed, got error: %v", err)
+	}
+
+	if _, ok := svc.Subscription("parent@example.com"); ok {
+		t.Fatal("expected no plan before subscribing")
+	}
+
+	sub, err := svc.Subscribe("parent@example.com", "family-monthly")
+	if err != nil {
+		t.Fatalf("expected subscribe to succeed, got error: %v", err)
+	}
+	if sub.Plan.ID != "family-monthly" {
+		t.Fatalf("expected the monthly plan to be recorded, got %q", sub.Plan.ID)
+	}
+	if sub.Plan.PriceNaira <= 0 {
+		t.Fatalf("expected a sample price on the paid plan, got %d", sub.Plan.PriceNaira)
+	}
+	if sub.Status != "active" {
+		t.Fatalf("expected the mock checkout to mark the plan active, got %q", sub.Status)
+	}
+	if sub.StartedAt.IsZero() {
+		t.Fatal("expected a plan start timestamp to be recorded")
+	}
+
+	got, ok := svc.Subscription("parent@example.com")
+	if !ok {
+		t.Fatal("expected the subscription to read back")
+	}
+	if got.Plan.ID != "family-monthly" || got.Status != "active" {
+		t.Fatalf("expected the recorded plan back, got %+v", got)
+	}
+
+	if _, err := svc.Subscribe("parent@example.com", "enterprise"); err == nil {
+		t.Fatal("expected an unknown plan to be rejected")
+	} else if !errors.Is(err, accounts.ErrUnknownPlan) {
+		t.Fatalf("expected ErrUnknownPlan, got %v", err)
+	}
+
+	if _, err := svc.Subscribe("nobody@example.com", "family-monthly"); err == nil {
+		t.Fatal("expected a missing account to be rejected")
+	} else if !errors.Is(err, accounts.ErrNotFound) {
+		t.Fatalf("expected ErrNotFound for a missing account, got %v", err)
+	}
+}
+
+// TestLearnersListsOnlyOwnGuardiansConsents proves a guardian's Learners view
+// (what their subscription covers) contains only the children they personally
+// gave consent for, sorted by learner name.
+func TestLearnersListsOnlyOwnGuardiansConsents(t *testing.T) {
+	svc := newTestAccounts()
+	for _, email := range []string{"g1@example.com", "g2@example.com"} {
+		if _, err := svc.Register(email, "password123"); err != nil {
+			t.Fatalf("expected registration to succeed, got error: %v", err)
+		}
+	}
+
+	if _, err := svc.Consent("g1@example.com", "Bello"); err != nil {
+		t.Fatalf("expected consent to be recorded, got error: %v", err)
+	}
+	if _, err := svc.Consent("g1@example.com", "Amaka"); err != nil {
+		t.Fatalf("expected consent to be recorded, got error: %v", err)
+	}
+	if _, err := svc.Consent("g2@example.com", "Chidi"); err != nil {
+		t.Fatalf("expected consent to be recorded, got error: %v", err)
+	}
+
+	one, err := svc.Learners("g1@example.com")
+	if err != nil {
+		t.Fatalf("expected Learners to succeed, got error: %v", err)
+	}
+	names := make([]string, len(one))
+	for i, c := range one {
+		names[i] = c.Learner
+	}
+	if !equalStrings(names, []string{"Amaka", "Bello"}) {
+		t.Fatalf("expected g1's own consented children sorted, got %v", names)
+	}
+
+	two, err := svc.Learners("g2@example.com")
+	if err != nil {
+		t.Fatalf("expected Learners to succeed, got error: %v", err)
+	}
+	if len(two) != 1 || two[0].Learner != "Chidi" {
+		t.Fatalf("expected g2 to see only Chidi, got %+v", two)
+	}
+}

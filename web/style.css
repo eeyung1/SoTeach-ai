@@ -547,6 +547,65 @@ main h1 {
   border: 1px solid var(--border-strong);
   box-shadow: none;
 }
+.account-heading {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.children-list {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.children-list li {
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.children-list li.muted {
+  color: var(--muted);
+  font-style: italic;
+  background: transparent;
+  border-color: transparent;
+  padding-left: 0;
+}
+.plan-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-top: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.plan-card.active {
+  border-color: rgba(167, 139, 250, 0.55);
+  box-shadow: 0 0 18px var(--glow-purple);
+}
+.plan-info {
+  flex: 1 1 14rem;
+}
+.plan-info h3 {
+  margin: 0 0 0.15rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.plan-info p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.plan-price {
+  font-weight: 800;
+  color: var(--purple-bright);
+  white-space: nowrap;
+}
 
 /* ---------- responsive ---------- */
 @media (max-width: 640px) {

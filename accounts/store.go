@@ -1,6 +1,7 @@
 package accounts
 
 import (
+	"sort"
 	"sync"
 )
 
@@ -11,6 +12,7 @@ type Store interface {
 	GuardianByEmail(email string) (Guardian, error)
 	SaveConsent(c Consent) error
 	ConsentByLearner(learner string) (Consent, error)
+	ConsentsByGuardian(email string) ([]Consent, error)
 	SaveSessionToken(token, email string) error
 	EmailByToken(token string) (string, error)
 }
@@ -64,6 +66,19 @@ func (m *MemoryStore) ConsentByLearner(learner string) (Consent, error) {
 		return Consent{}, ErrNotFound
 	}
 	return c, nil
+}
+
+func (m *MemoryStore) ConsentsByGuardian(email string) ([]Consent, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var out []Consent
+	for _, c := range m.consents {
+		if c.GuardianEmail == email {
+			out = append(out, c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Learner < out[j].Learner })
+	return out, nil
 }
 
 func (m *MemoryStore) SaveSessionToken(token, email string) error {

@@ -24,6 +24,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrLearnerRequired    = errors.New("learner name is required")
+	ErrUnknownPlan        = errors.New("unknown plan")
 )
 
 // minPasswordLength is the shortest acceptable guardian password.
@@ -38,6 +39,12 @@ type Guardian struct {
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"passwordHash"`
 	CreatedAt    time.Time `json:"createdAt"`
+	// ActivePlanID/PlanStatus/PlanStartedAt record the guardian's chosen
+	// subscription (Plans catalog). Additive and optional: existing records
+	// load with these unset, meaning "no plan yet".
+	ActivePlanID  string    `json:"activePlanId,omitempty"`
+	PlanStatus    string    `json:"planStatus,omitempty"`
+	PlanStartedAt time.Time `json:"planStartedAt,omitempty"`
 }
 
 // Consent is one guardian's recorded, verifiable consent for one learner.
@@ -47,6 +54,15 @@ type Consent struct {
 	ConsentText   string    `json:"consentText"`
 	ConsentedAt   time.Time `json:"consentedAt"`
 	Token         string    `json:"token"`
+}
+
+// Subscription is a guardian's active plan — the paid-funnel conversion
+// (Blueprint/monetization_funnel.md). It never exposes PasswordHash; it is the
+// safe view returned to HTTP and the web client.
+type Subscription struct {
+	Plan      Plan      `json:"plan"`
+	Status    string    `json:"status"`
+	StartedAt time.Time `json:"startedAt"`
 }
 
 // Service is the application boundary for guardian accounts and consent. The
@@ -166,6 +182,48 @@ func (s *Service) ConsentFor(learner string) (Consent, bool) {
 		return Consent{}, false
 	}
 	return c, true
+}
+
+// Subscribe records a guardian's chosen plan from the Plans catalog (the mock
+// checkout: no real payment is taken — see plans.go). It is rejected for a
+// missing account or an unknown plan ID, leaving the guardian unchanged.
+func (s *Service) Subscribe(email, planID string) (Subscription, error) {
+	g, err := s.store.GuardianByEmail(normalizeEmail(email))
+	if err != nil {
+		return Subscription{}, err
+	}
+	p, ok := planByID[planID]
+	if !ok {
+		return Subscription{}, ErrUnknownPlan
+	}
+
+	g.ActivePlanID = p.ID
+	g.PlanStatus = "active"
+	g.PlanStartedAt = time.Now().UTC()
+	if err := s.store.SaveGuardian(g); err != nil {
+		return Subscription{}, err
+	}
+	return Subscription{Plan: p, Status: g.PlanStatus, StartedAt: g.PlanStartedAt}, nil
+}
+
+// Subscription returns the guardian's active plan, or false when they have
+// none. It never surfaces the password hash.
+func (s *Service) Subscription(email string) (Subscription, bool) {
+	g, err := s.store.GuardianByEmail(normalizeEmail(email))
+	if err != nil || g.ActivePlanID == "" {
+		return Subscription{}, false
+	}
+	p, ok := planByID[g.ActivePlanID]
+	if !ok {
+		return Subscription{}, false
+	}
+	return Subscription{Plan: p, Status: g.PlanStatus, StartedAt: g.PlanStartedAt}, true
+}
+
+// Learners returns the children a guardian has given consent for — the set a
+// guardian subscription covers.
+func (s *Service) Learners(email string) ([]Consent, error) {
+	return s.store.ConsentsByGuardian(normalizeEmail(email))
 }
 
 func normalizeEmail(email string) string {

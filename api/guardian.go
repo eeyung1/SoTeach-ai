@@ -24,6 +24,9 @@ func AddGuardianRoutes(mux *http.ServeMux, svc *accounts.Service) {
 	mux.HandleFunc("POST /guardians/login", g.login)
 	mux.HandleFunc("POST /guardians/consent", g.consent)
 	mux.HandleFunc("GET /guardians/consent/{learner}", g.consentStatus)
+	mux.HandleFunc("GET /guardians/plans", g.plans)
+	mux.HandleFunc("POST /guardians/plan", g.choosePlan)
+	mux.HandleFunc("GET /guardians/me", g.me)
 	mux.HandleFunc("GET /learners/{learner}/consent", g.publicConsentStatus)
 }
 
@@ -139,6 +142,84 @@ func (g *guardianAPI) writeConsentStatus(w http.ResponseWriter, learner string) 
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// planRequest is the body of POST /guardians/plan.
+type planRequest struct {
+	PlanID string `json:"planID"`
+}
+
+// plans returns the server-owned plan catalog (Blueprint/monetization_funnel
+// conversion point) to an authenticated guardian.
+func (g *guardianAPI) plans(w http.ResponseWriter, r *http.Request) {
+	if g.authenticatedEmail(w, r) == "" {
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"plans": accounts.Plans()})
+}
+
+// choosePlan is the mock checkout: it records the guardian's chosen plan on
+// their account (no real payment is taken yet — sample catalog). The guardian
+// subscription covers every child they have consented for.
+func (g *guardianAPI) choosePlan(w http.ResponseWriter, r *http.Request) {
+	email := g.authenticatedEmail(w, r)
+	if email == "" {
+		return
+	}
+
+	var req planRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "request body must be valid JSON")
+		return
+	}
+	sub, err := g.svc.Subscribe(email, req.PlanID)
+	if err != nil {
+		writeError(w, guardianStatus(err), err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":    sub.Status,
+		"plan":      sub.Plan,
+		"startedAt": sub.StartedAt,
+	})
+}
+
+// me returns the authenticated guardian's account state — email, active plan
+// (or null), and the consented children their plan covers — so the guardian
+// page can restore state on reload. Password hashes are never returned.
+func (g *guardianAPI) me(w http.ResponseWriter, r *http.Request) {
+	email := g.authenticatedEmail(w, r)
+	if email == "" {
+		return
+	}
+
+	learners, err := g.svc.Learners(email)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	learnerList := make([]map[string]any, 0, len(learners))
+	for _, c := range learners {
+		learnerList = append(learnerList, map[string]any{
+			"learner":     c.Learner,
+			"consentedAt": c.ConsentedAt,
+		})
+	}
+
+	var plan any
+	if sub, ok := g.svc.Subscription(email); ok {
+		plan = map[string]any{
+			"plan":      sub.Plan,
+			"status":    sub.Status,
+			"startedAt": sub.StartedAt,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"email":    email,
+		"plan":     plan,
+		"learners": learnerList,
+	})
+}
+
 // guardianStatus maps accounts errors to HTTP statuses.
 func guardianStatus(err error) int {
 	switch {
@@ -146,7 +227,8 @@ func guardianStatus(err error) int {
 		return http.StatusConflict
 	case errors.Is(err, accounts.ErrEmailRequired),
 		errors.Is(err, accounts.ErrPasswordTooShort),
-		errors.Is(err, accounts.ErrLearnerRequired):
+		errors.Is(err, accounts.ErrLearnerRequired),
+		errors.Is(err, accounts.ErrUnknownPlan):
 		return http.StatusBadRequest
 	case errors.Is(err, accounts.ErrInvalidCredentials),
 		errors.Is(err, accounts.ErrUnauthorized):
