@@ -3,43 +3,123 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SoTeach — Addition Tutor</title>
+  <title>SoTeach — Socratic Teaching</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main>
-    <h1>SoTeach <a href="/guardian.html" class="back-link">Guardian area →</a></h1>
-    <p class="tagline">Tell us your name, your class, and what you want to practise. The tutor will guide you step by step.</p>
+  <div class="glow glow-a" aria-hidden="true"></div>
+  <div class="glow glow-b" aria-hidden="true"></div>
+  <div class="glow glow-c" aria-hidden="true"></div>
 
-    <form id="start-form">
-      <div class="field">
-        <label for="learner-name">Your name</label>
-        <input id="learner-name" type="text" autocomplete="off" required>
-      </div>
-      <div class="field">
-        <label for="grade-band">Class / age band</label>
-        <select id="grade-band" required></select>
-      </div>
-      <div class="field">
-        <label for="subject">Subject</label>
-        <select id="subject" required></select>
-      </div>
-      <div class="field">
-        <label for="topic">Topic</label>
-        <select id="topic" required></select>
-      </div>
-      <button id="begin-button" type="submit">Begin</button>
-    </form>
+  <header class="site-header">
+    <a class="brand" href="/">
+      <span class="sparkle" aria-hidden="true">✦</span>
+      <span class="brand-name">SoTeach</span>
+      <span class="ai-badge">AI</span>
+    </a>
+    <a class="btn btn-outline btn-sm" href="/guardian.html">Guardian area</a>
+  </header>
 
-    <section id="report" aria-live="polite" hidden></section>
+  <main class="page">
+    <section class="hero">
+      <p class="status-line">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>Socratic Teaching · by AI</span>
+      </p>
 
-    <section id="transcript" aria-live="polite" hidden></section>
+      <h1 class="headline">
+        <span class="line line-white">Every student is stuck</span>
+        <span class="line line-white">on a different gap.</span>
+        <span class="line line-purple">SoTeach finds yours.</span>
+      </h1>
 
-    <form id="chat-form" hidden>
-      <label for="answer" class="visually-hidden">Your answer</label>
-      <input id="answer" type="text" autocomplete="off" placeholder="Type your answer…">
-      <button type="submit">Send</button>
-    </form>
+      <p class="hero-sub">
+        SoTeach is an AI Socratic tutor for Nigerian students from Primary&nbsp;4
+        to SSS3. It does not start teaching — it starts by asking, works out the
+        exact thing you don&rsquo;t yet understand, then teaches only that, one
+        step at a time. No sign-up needed.
+      </p>
+
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#start">Start practising — free</a>
+        <a class="btn btn-outline" href="#how">See how it works</a>
+      </div>
+
+      <div class="support-row">
+        <p class="support-label">What SoTeach teaches today</p>
+        <ul class="support-badges">
+          <li>Mathematics</li>
+          <li>English Language</li>
+          <li>+ more topics</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="how" class="how">
+      <h2 class="section-title">How it works</h2>
+      <ol class="steps">
+        <li class="step">
+          <span class="step-num" aria-hidden="true">1</span>
+          <div class="step-body">
+            <h3>Ask</h3>
+            <p>SoTeach starts by asking you to explain what you already know about the topic — it never assumes.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">2</span>
+          <div class="step-body">
+            <h3>Find the gap</h3>
+            <p>From your own words, it pinpoints the exact thing you don&rsquo;t understand yet.</p>
+          </div>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">3</span>
+          <div class="step-body">
+            <h3>Teach &amp; verify</h3>
+            <p>It teaches only that gap, checks you can use it on a new question, then confirms you&rsquo;ve truly got it.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section id="start" class="session panel">
+      <form id="start-form">
+        <h2>Start practising</h2>
+        <p class="tagline">Tell us your name, your class, and what you want to practise. The tutor will guide you step by step.</p>
+
+        <div class="field">
+          <label for="learner-name">Your name</label>
+          <input id="learner-name" type="text" autocomplete="off" required>
+        </div>
+        <div class="field">
+          <label for="grade-band">Class / age band</label>
+          <select id="grade-band" required></select>
+        </div>
+        <div class="field">
+          <label for="subject">Subject</label>
+          <select id="subject" required></select>
+        </div>
+        <div class="field">
+          <label for="topic">Topic</label>
+          <select id="topic" required></select>
+        </div>
+        <button id="begin-button" class="btn btn-primary btn-block" type="submit">Begin</button>
+      </form>
+
+      <section id="report" aria-live="polite" hidden></section>
+      <section id="transcript" aria-live="polite" hidden></section>
+
+      <form id="chat-form" hidden>
+        <label for="answer" class="visually-hidden">Your answer</label>
+        <input id="answer" type="text" autocomplete="off" placeholder="Type your answer…">
+        <button class="btn btn-primary" type="submit">Send</button>
+      </form>
+
+      <p class="start-note">Parents &amp; guardians can <a href="/guardian.html">manage consent here</a>.</p>
+    </section>
   </main>
   <script src="/app.js"></script>
 </body>
