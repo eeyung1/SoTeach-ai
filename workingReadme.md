@@ -269,7 +269,12 @@ what needs a real answer, not a legal determination:
 - **Parental/guardian consent flow:** must be implemented as an actual
   gate in the account-creation flow (not just a backend flag) before any
   real student data is collected, per README §10's Nigeria Data Protection
-  Act (2023) requirement.
+  Act (2023) requirement. The account-flow mechanism now exists
+  (`accounts/` + `/guardians/*`, see the README §10 note): guardian
+  registration/login and an explicit, verifiable consent record per learner,
+  surfaced publicly at `GET /learners/{name}/consent`. Still open: enforcing
+  the gate on real collection (awaits learner accounts / a `-require-consent`
+  runtime flag) and legal sign-off on who the data controller is.
 - **No open-ended child-facing chat surface:** the app's UI must not expose
   a general-purpose chat box to a child user — inputs should be scoped to
   the tutoring interaction (answers, confirmations), consistent with README
@@ -308,9 +313,14 @@ done-condition is met**, per the original README's workflow discipline
 > checking), the AI-provider boundary, a session store (in-memory
 > `MemoryStore` for tests, durable file-backed `FileStore` for the server),
 > and a thin REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) —
-> proven by 108 automated tests, with the full loop drivable over the API.
+> proven by 122 automated tests, with the full loop drivable over the API.
 > Sessions survive server restarts via `FileStore`; PostgreSQL is also
-> available behind the same Store contract (server `-dsn`). Stage 2's web
+> available behind the same Store contract (server `-dsn`). The guardian
+> account + verifiable-consent layer (`accounts/`, `/guardians/*`,
+> `GET /learners/{name}/consent`) is in as the account-flow gate (README
+> §10), persisted to its own file store (server `-accounts`); enforcing it
+> on real collection, plus payments and data-controller sign-off, remains
+> open. Stage 2's web
 > client (`web/` + `cmd/server`)
 > drives the full cycle in a browser (happy path verified manually). Not yet
 > built: the later client stages (3–8). Stage 0 below is a Blueprint-tracked
@@ -341,8 +351,10 @@ done-condition is met**, per the original README's workflow discipline
 - **Done:** the engine (`session/`, `ai/`), the application layer that owns
   the loop (`tutor/`), a session store (in-memory `MemoryStore` for tests,
   durable `FileStore` for the server), and the HTTP boundary (`api/`: begin,
-  input, resume) are implemented in Go and proven by 108 automated tests in
-  `tests/`; the full loop runs over the API.
+  input, resume) are implemented in Go and proven by 122 automated tests in
+  `tests/`; the full loop runs over the API. The guardian consent layer
+  (`accounts/`) adds its own verified tests (register/login/consent over
+  HTTP and against the account store).
 - **Remaining:** the Stage 0 real-learner item (Blueprint-tracked). Durable
   persistence is done: file-backed `FileStore` (default) and an optional
   PostgreSQL store behind the same Store contract (server `-dsn`), per

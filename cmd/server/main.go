@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 
+	"soteach/accounts"
 	"soteach/ai/provider"
 	"soteach/api"
 	"soteach/session"
@@ -29,6 +30,7 @@ func main() {
 	addr := flag.String("addr", ":8080", "HTTP listen address")
 	dataDir := flag.String("data", "soteach-data", "directory for the file-backed session store")
 	dsn := flag.String("dsn", "", "PostgreSQL DSN; when set the durable store is PostgreSQL instead of the file store")
+	accountsPath := flag.String("accounts", "soteach-accounts.json", "path to the guardian accounts store")
 	flag.Parse()
 
 	var store session.Store
@@ -49,6 +51,13 @@ func main() {
 		log.Printf("SoTeach using file session store (%s)", *dataDir)
 	}
 
+	acctStore, err := accounts.NewFileStore(*accountsPath)
+	if err != nil {
+		log.Fatalf("open accounts store: %v", err)
+	}
+	accts := accounts.NewService(acctStore)
+	log.Printf("SoTeach guardian accounts store: %s", *accountsPath)
+
 	var tut *tutor.Tutor
 	if name := os.Getenv("SOTEACH_AI_PROVIDER"); name != "" {
 		p, err := provider.New(name, provider.Config{
@@ -67,6 +76,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	api.AddRoutesWithTutor(mux, store, tut)
+	api.AddGuardianRoutes(mux, accts)
 	mux.Handle("/", http.FileServer(http.FS(web.Files)))
 
 	log.Printf("SoTeach listening on http://localhost%s", *addr)

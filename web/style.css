@@ -25,6 +25,12 @@ h1 {
   margin: 0 0 0.25rem;
 }
 
+.back-link {
+  font-size: 0.9rem;
+  font-weight: normal;
+  margin-left: 0.75rem;
+}
+
 .tagline {
   color: #4a5568;
   margin: 0 0 1.5rem;

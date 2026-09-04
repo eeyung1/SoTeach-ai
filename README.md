@@ -2,7 +2,7 @@
 
 **Status:** Stage 1 (tutoring engine + backend API) and the core of Stage 2
 (a minimal web client) are implemented and test-verified for the narrow MVP
-slice — 108 automated tests green, plus a manually verified full tutoring
+slice — 122 automated tests green, plus a manually verified full tutoring
 cycle in a real browser. The core loop from [Section 2](#2-the-core-learning-loop-this-is-the-product--read-this-section-fully-before-writing-tutor-logic)
 (DIAGNOSE → TEACH → PRACTICE → VERIFY → LOOP/CLOSE), the required state
 machine ([Section 6](#6-required-state-machine)), the interaction rules from
@@ -10,7 +10,7 @@ machine ([Section 6](#6-required-state-machine)), the interaction rules from
 (including deterministic Mathematics answer-checking), the AI-provider
 boundary, a session store, a thin REST/JSON HTTP API, and a plain
 HTML/CSS/JS browser client are built in Go + web (`session/`, `ai/`, `tutor/`,
-`api/`, `web/`, `cmd/`, `tests/`). A learner picks a grade band, subject, and topic from the server-owned
+`api/`, `accounts/`, `web/`, `cmd/`, `tests/`). A learner picks a grade band, subject, and topic from the server-owned
 `/curriculum` catalog in the browser, then is guided through diagnose →
 practice → verify → mastery with no engineer intervention. Content is
 age-calibrated: the three grade bands get distinct voices for prompts,
@@ -350,6 +350,18 @@ questions needed real legal answers, not engineering assumptions:**
 - **Auditability** (Section 9, safeguard 6) also serves this purpose — a
   clear interaction record protects both the student and the platform if
   a concern is ever raised about what the system said to a child.
+
+  **Implemented so far:** a guardian account + verifiable-consent layer
+  (`accounts/`, guardian routes under `/guardians/*`, plus the public
+  `GET /learners/{name}/consent`) records consent as real account-flow
+  state — who consented, for which learner, when, to the versioned consent
+  text, with a consent token — persisted across restarts (email + bcrypt
+  password, server-issued bearer tokens; web flow at `/guardian.html`).
+  **Still open, do not guess:** enforcing the gate on real data collection
+  (mechanism and endpoints are in; wiring it into the anonymous demo
+  session flow waits for learner accounts / a `-require-consent` runtime
+  flag), email verification, learner accounts, real payment processing and
+  plans, and the data-controller determination below needing legal sign-off.
 
 ---
 

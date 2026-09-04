@@ -8,5 +8,5 @@ import "embed"
 
 // Files holds the web client's static assets.
 //
-//go:embed index.html app.js style.css
+//go:embed index.html guardian.html app.js guardian.js style.css
 var Files embed.FS

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SoTeach — Guardian</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <h1>SoTeach <a href="/" class="back-link">← back to tutoring</a></h1>
+    <p class="tagline">Parents and guardians: create an account and give consent for your child's learning data to be used for tutoring.</p>
+
+    <section id="auth-forms">
+      <form id="register-form">
+        <h2>Create a guardian account</h2>
+        <div class="field"><label for="reg-email">Email</label><input id="reg-email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="reg-password">Password (8+ characters)</label><input id="reg-password" type="password" autocomplete="new-password" required></div>
+        <button type="submit">Register</button>
+      </form>
+
+      <form id="login-form">
+        <h2>Log in</h2>
+        <div class="field"><label for="login-email">Email</label><input id="login-email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required></div>
+        <button type="submit">Log in</button>
+      </form>
+    </section>
+
+    <section id="status" aria-live="polite" hidden></section>
+
+    <section id="consent-panel" hidden>
+      <h2>Give consent for a learner</h2>
+      <form id="consent-form">
+        <div class="field"><label for="learner-name">Child's name (as used in tutoring)</label><input id="learner-name" type="text" autocomplete="off" required></div>
+        <button type="submit">Give consent</button>
+      </form>
+      <p class="tagline">By consenting you agree to SoTeach using this child's learning data (diagnostic findings and progress) solely for tutoring, per the Nigeria Data Protection Act 2023.</p>
+    </section>
+  </main>
+  <script src="/guardian.js"></script>
+</body>
+</html>

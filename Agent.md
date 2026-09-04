@@ -795,6 +795,8 @@ Do not introduce:
 
 Parental/guardian consent must eventually be an actual account-flow gate where required, not merely a database boolean.
 
+The consent mechanism is now concrete (`accounts/`, guardian routes under `/guardians/*`, `GET /learners/{name}/consent`): guardian registration/login and an explicit, versioned, timestamped consent record per learner, persisted to a file store (server `-accounts`). What remains is wiring it into collection (learner accounts / a `-require-consent` runtime flag), email verification, payments, and the legal data-controller determination — do not guess those.
+
 Legal and store-policy questions must not be guessed.
 
 Flag unresolved questions rather than inventing answers.

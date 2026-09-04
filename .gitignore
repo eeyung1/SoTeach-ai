@@ -1,5 +1,8 @@
 # Server data directory (durable session store snapshots)
 soteach-data/
 
+# Guardian accounts store
+soteach-accounts.json
+
 # Local environment secrets (never commit)
 .env
