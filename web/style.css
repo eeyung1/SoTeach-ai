@@ -88,6 +88,34 @@ button:disabled {
   overflow-y: auto;
 }
 
+#report {
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  border-radius: 0.5rem;
+  background: #e8f0fe;
+  border: 1px solid #b3c9ec;
+}
+
+#report h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+#report .finding {
+  font-style: italic;
+  margin: 0 0 0.75rem;
+}
+
+#report ul {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+#report h3 {
+  margin: 0.75rem 0 0.1rem;
+  font-size: 1rem;
+}
+
 .message {
   padding: 0.7rem 0.9rem;
   border-radius: 0.5rem;

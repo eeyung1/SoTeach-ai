@@ -1,7 +1,8 @@
 /* The page owns no tutoring logic (workingReadme 3): it renders the
-   server-owned curriculum, and sends only the learner's name, chosen
-   subject/topic/grade band, and the learner's own words to the API. It never
-   decides what can be taught or what the next step is. */
+   server-owned curriculum, sends only the learner's name, chosen
+   subject/topic/grade band, and the learner's own words to the API, and shows
+   the prompts that come back. After the diagnostic explanation it fetches and
+   renders the learner/parent gap report (the funnel's value moment). */
 (function () {
   'use strict';
 
@@ -14,9 +15,13 @@
   var beginButton = document.getElementById('begin-button');
   var answerInput = document.getElementById('answer');
   var transcript = document.getElementById('transcript');
+  var reportEl = document.getElementById('report');
 
   var curriculum = null; // { subjects: [{name, topics}], gradeBands: [...] }
   var learner = '';
+  // True from begin until the learner has submitted their diagnostic
+  // explanation — the point at which the gap report becomes available.
+  var awaitingDiagnosis = false;
 
   function learnerPath() {
     return '/learners/' + encodeURIComponent(learner);
@@ -67,7 +72,6 @@
     return el;
   }
 
-  // populates the topic options for the currently chosen subject.
   function populateTopics() {
     topicSelect.innerHTML = '';
     var subject = curriculum.subjects.find(function (s) { return s.name === subjectSelect.value; });
@@ -79,7 +83,6 @@
     });
   }
 
-  // loads the server-owned curriculum and fills the grade/subject/topic lists.
   function loadCurriculum() {
     beginButton.disabled = true;
     return fetch('/curriculum')
@@ -109,6 +112,65 @@
 
   subjectSelect.addEventListener('change', populateTopics);
 
+  // heading/labels are the only text built from server/learner data that we
+  // put in the DOM; everything is set with textContent (never innerHTML), so
+  // learner- or model-provided text can never become markup.
+  function addTextList(container, items) {
+    if (!items || items.length === 0) {
+      return;
+    }
+    var ul = document.createElement('ul');
+    items.forEach(function (item) {
+      var li = document.createElement('li');
+      li.textContent = item;
+      ul.appendChild(li);
+    });
+    container.appendChild(ul);
+  }
+
+  function renderReport(data) {
+    reportEl.innerHTML = '';
+    var h2 = document.createElement('h2');
+    h2.textContent = 'Your diagnosis';
+    reportEl.appendChild(h2);
+
+    var finding = document.createElement('p');
+    finding.className = 'finding';
+    finding.textContent = 'You told us: ' + (data.finding || '');
+    reportEl.appendChild(finding);
+
+    if (data.gaps && data.gaps.length) {
+      var h3 = document.createElement('h3');
+      h3.textContent = 'What we found';
+      reportEl.appendChild(h3);
+      addTextList(reportEl, data.gaps);
+    }
+    if (data.misconceptions && data.misconceptions.length) {
+      var h4 = document.createElement('h3');
+      h4.textContent = 'A misconception to work on';
+      reportEl.appendChild(h4);
+      addTextList(reportEl, data.misconceptions);
+    }
+    if (data.recommendedAction) {
+      var rec = document.createElement('p');
+      rec.textContent = 'Suggested next step: ' + data.recommendedAction;
+      reportEl.appendChild(rec);
+    }
+    reportEl.hidden = false;
+  }
+
+  function showDiagnosisReport() {
+    fetch(learnerPath() + '/diagnosis')
+      .then(function (res) {
+        if (!res.ok) {
+          throw new Error('diagnosis report request failed');
+        }
+        return res.json();
+      })
+      .then(renderReport)
+      .catch(function () { /* report is a nice-to-have; the session continues */ });
+  }
+
   function begin() {
     beginButton.disabled = true;
     postJSON(learnerPath() + '/begin', {
@@ -122,7 +184,9 @@
         return;
       }
       startForm.hidden = true;
+      reportEl.hidden = true;
       chatForm.hidden = false;
+      awaitingDiagnosis = result.data.state === 'diagnosing';
       answerInput.focus();
       handleTurn(result.data);
     }).catch(function () {
@@ -134,6 +198,10 @@
   function sendAnswer(text) {
     postJSON(learnerPath() + '/input', { input: text }).then(function (result) {
       if (result.ok) {
+        if (awaitingDiagnosis) {
+          awaitingDiagnosis = false;
+          showDiagnosisReport();
+        }
         handleTurn(result.data);
         return;
       }
@@ -153,7 +221,9 @@
     if (!learner) {
       return;
     }
+    startForm.hidden = true;
     transcript.innerHTML = '';
+    reportEl.hidden = true;
     addMessage('Hi ' + learner + '! The tutor will ask you questions now.', 'system');
     begin();
   });
