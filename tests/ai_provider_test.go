@@ -103,6 +103,50 @@ func TestGroqDiagnoseParsesStructuredResult(t *testing.T) {
 	}
 }
 
+// TestGroqDiagnoseParsesResultWrappedInProse confirms a model that ignores the
+// "JSON only" instruction and wraps the object in prose is still parsed
+// correctly (Agent.md §40 — robust structured-output handling).
+func TestGroqDiagnoseParsesResultWrappedInProse(t *testing.T) {
+	want := ai.DiagnosticResult{
+		Concept:           "Addition",
+		Gaps:              []string{"regrouping"},
+		Confidence:        0.7,
+		RecommendedAction: "teach",
+	}
+	raw, err := json.Marshal(want)
+	if err != nil {
+		t.Fatalf("expected the fixture to marshal, got error: %v", err)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"content": "Sure! Here is your analysis:\n\n" + string(raw) + "\n\nHope that helps."}},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	p, err := provider.NewGroq(provider.GroqConfig{
+		APIKey:   "test-key",
+		Model:    "llama-3.3-70b-versatile",
+		BaseURL:  srv.URL,
+		BasePath: "/chat/completions",
+	})
+	if err != nil {
+		t.Fatalf("expected the groq provider to construct, got error: %v", err)
+	}
+
+	got, err := p.Diagnose("Addition", "I add single digits but get confused when it carries over")
+	if err != nil {
+		t.Fatalf("expected Diagnose to succeed despite prose, got error: %v", err)
+	}
+	if got.Concept != "Addition" || len(got.Gaps) != 1 || got.Gaps[0] != "regrouping" {
+		t.Fatalf("expected the wrapped JSON to be parsed, got %+v", got)
+	}
+}
+
 // TestGroqDiagnoseReturnsProviderError confirms a non-2xx response from the
 // model API surfaces as an error (Agent.md §41 — the session stays untouched).
 func TestGroqDiagnoseReturnsProviderError(t *testing.T) {

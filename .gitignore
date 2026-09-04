@@ -1,2 +1,5 @@
 # Server data directory (durable session store snapshots)
 soteach-data/
+
+# Local environment secrets (never commit)
+.env
