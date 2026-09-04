@@ -152,6 +152,7 @@ type sessionSnapshot struct {
 	IsTransferQuestion   bool               `json:"isTransferQuestion"`
 	TaughtSinceUncertain bool               `json:"taughtSinceUncertain"`
 	LastTeaching         string             `json:"lastTeaching"`
+	WrongStreak          int                `json:"wrongStreak"`
 }
 
 // captureSnapshot copies a Session into a sessionSnapshot. Maps and slices
@@ -178,6 +179,7 @@ func captureSnapshot(s *Session) sessionSnapshot {
 		IsTransferQuestion:   s.isTransferQuestion,
 		TaughtSinceUncertain: s.taughtSinceUncertain,
 		LastTeaching:         s.lastTeaching,
+		WrongStreak:          s.wrongStreak,
 	}
 }
 
@@ -205,6 +207,7 @@ func restoreSnapshot(snap sessionSnapshot) *Session {
 		isTransferQuestion:   snap.IsTransferQuestion,
 		taughtSinceUncertain: snap.TaughtSinceUncertain,
 		lastTeaching:         snap.LastTeaching,
+		wrongStreak:          snap.WrongStreak,
 	}
 	return s
 }

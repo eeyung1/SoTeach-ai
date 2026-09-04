@@ -105,6 +105,7 @@ type Session struct {
 	isTransferQuestion   bool
 	taughtSinceUncertain bool
 	lastTeaching         string
+	wrongStreak          int
 }
 
 // New creates a session for a single named learner.
@@ -213,6 +214,7 @@ func (s *Session) resetForNewSelection() {
 	s.isTransferQuestion = false
 	s.taughtSinceUncertain = false
 	s.lastTeaching = ""
+	s.wrongStreak = 0
 }
 
 // masteryKey identifies the current subject+topic for mastery tracking.
@@ -234,6 +236,15 @@ func (s *Session) restoreMasteryForCurrentSelection() {
 	} else {
 		s.mastered = false
 	}
+}
+
+// ResetAttempt clears the in-progress diagnosis/question/answer state for the
+// current subject/topic, so a learner who explicitly stops can begin again
+// from scratch — while keeping learner-level state (name, grade band) and any
+// previously demonstrated mastery intact.
+func (s *Session) ResetAttempt() {
+	s.resetForNewSelection()
+	s.restoreMasteryForCurrentSelection()
 }
 
 // StartDiagnosis begins README §2 Stage 1 (DIAGNOSE): asking the learner
@@ -452,6 +463,24 @@ func (s *Session) HasAnswer() bool {
 // verification question is also answered correctly.
 func (s *Session) IsMastered() bool {
 	return s.mastered
+}
+
+// WrongStreak returns how many consecutive practice answers have been
+// incorrect. It is reset by a correct answer, an uncertain answer, teaching,
+// or moving to a new subject/topic. The tutor uses it to stop endlessly
+// re-asking and teach the gap instead (README §9).
+func (s *Session) WrongStreak() int {
+	return s.wrongStreak
+}
+
+// NoteIncorrectAttempt increments the consecutive-wrong count.
+func (s *Session) NoteIncorrectAttempt() {
+	s.wrongStreak++
+}
+
+// ResetWrongStreak clears the consecutive-wrong count.
+func (s *Session) ResetWrongStreak() {
+	s.wrongStreak = 0
 }
 
 // CurrentQuestion returns the text of the currently pending question so a

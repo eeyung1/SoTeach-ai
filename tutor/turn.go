@@ -2,6 +2,7 @@ package tutor
 
 import (
 	"errors"
+	"strings"
 
 	"soteach/ai"
 	"soteach/session"
@@ -37,6 +38,11 @@ var ErrNothingAwaitingInput = errors.New("no input is expected from the learner 
 // ErrNoDiagnosisYet is returned when a diagnosis report is requested before
 // any diagnosis has been completed for the learner.
 var ErrNoDiagnosisYet = errors.New("no diagnosis recorded yet for this learner")
+
+// wrongThreshold is how many consecutive incorrect practice answers happen
+// before the tutor stops merely re-asking and teaches the gap instead
+// (README §9 — no child left floundering in a loop).
+const wrongThreshold = 2
 
 // Tutor is the application layer that owns the tutoring loop (README §2;
 // Agent.md §11): it decides what happens next in a learner's session and what
@@ -141,12 +147,14 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 
 	switch s.State() {
 	case session.Mastered:
+		s.ResetWrongStreak()
 		if err := t.store.Save(s); err != nil {
 			return Outcome{}, err
 		}
 		return Outcome{Prompt: completionMessage(s.Topic())}, nil
 
 	case session.AwaitingTransferCheck:
+		s.ResetWrongStreak()
 		question, expected, err := transferQuestion(s.Topic())
 		if err != nil {
 			return Outcome{}, err
@@ -160,9 +168,23 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 		return Outcome{Prompt: question}, nil
 
 	case session.Incorrect:
+		s.NoteIncorrectAttempt()
 		question, expected, err := nextPracticeQuestion(s.Topic(), s.CurrentQuestion())
 		if err != nil {
 			return Outcome{}, err
+		}
+		if s.WrongStreak() >= wrongThreshold {
+			// Repeatedly wrong: teach the gap, then ask again (README §9).
+			teach := explanation(s.Topic())
+			s.Teach(teach)
+			s.ResetWrongStreak()
+			if err := s.AskQuestion(question, expected); err != nil {
+				return Outcome{}, err
+			}
+			if err := t.store.Save(s); err != nil {
+				return Outcome{}, err
+			}
+			return Outcome{Prompt: teach + " " + question}, nil
 		}
 		if err := s.AskQuestion(question, expected); err != nil {
 			return Outcome{}, err
@@ -173,6 +195,7 @@ func (t *Tutor) SubmitAnswer(learner, answer string) (Outcome, error) {
 		return Outcome{Prompt: question}, nil
 
 	case session.Uncertain:
+		s.ResetWrongStreak()
 		teach := explanation(s.Topic())
 		question, expected, err := nextPracticeQuestion(s.Topic(), s.CurrentQuestion())
 		if err != nil {
@@ -251,6 +274,10 @@ func (t *Tutor) BeginTopic(learner, subject, topic string) (Outcome, error) {
 // decide what an input means (Agent.md §19). It is rejected when no session
 // exists for the learner, or when the session is not waiting for any input.
 func (t *Tutor) ApplyInput(learner, input string) (Outcome, error) {
+	if isStopRequest(input) {
+		return t.Stop(learner)
+	}
+
 	s, err := t.store.Load(learner)
 	if err != nil {
 		return Outcome{}, err
@@ -264,6 +291,42 @@ func (t *Tutor) ApplyInput(learner, input string) (Outcome, error) {
 	default:
 		return Outcome{}, ErrNothingAwaitingInput
 	}
+}
+
+const stopPrompt = "Okay, let's stop here. You can begin again any time."
+
+// Stop is the learner's exit affordance: it abandons the current attempt on
+// this topic (README §3, handle interruptions; no learner is trapped in a
+// loop). The in-progress diagnosis/question state is cleared via
+// Session.ResetAttempt, so beginning the same topic again starts fresh, while
+// learner-level state (grade band) and any demonstrated mastery are kept.
+func (t *Tutor) Stop(learner string) (Outcome, error) {
+	s, err := t.store.Load(learner)
+	if err != nil {
+		return Outcome{}, err
+	}
+	if s.IsMastered() {
+		return Outcome{Prompt: "You have already finished this topic."}, nil
+	}
+
+	s.ResetAttempt()
+	if err := t.store.Save(s); err != nil {
+		return Outcome{}, err
+	}
+	return Outcome{Prompt: stopPrompt}, nil
+}
+
+// stopWords are the plain-language ways a learner can stop, recognized before
+// any state routing so a stop word is never treated as a math answer.
+var stopWords = map[string]bool{
+	"stop":   true,
+	"quit":   true,
+	"exit":   true,
+	"enough": true,
+}
+
+func isStopRequest(input string) bool {
+	return stopWords[strings.ToLower(strings.TrimSpace(input))]
 }
 
 // SetGradeBand records the learner's grade/age band on their saved session
