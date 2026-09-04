@@ -313,9 +313,13 @@ done-condition is met**, per the original README's workflow discipline
 > checking), the AI-provider boundary, a session store (in-memory
 > `MemoryStore` for tests, durable file-backed `FileStore` for the server),
 > and a thin REST/JSON HTTP API (`ai/`, `session/`, `tutor/`, `api/`) —
-> proven by 122 automated tests, with the full loop drivable over the API.
+> proven by 130 automated tests, with the full loop drivable over the API.
 > Sessions survive server restarts via `FileStore`; PostgreSQL is also
-> available behind the same Store contract (server `-dsn`). The guardian
+> available behind the same Store contract (server `-dsn`). The server-owned
+> catalog (workingReadme §3: clients render it, never decide it) now spans
+> Mathematics (Addition, Subtraction, Multiplication, Division) and English
+> Language (Parts of Speech), each age-calibrated across the three grade
+> bands. The guardian
 > account + verifiable-consent layer (`accounts/`, `/guardians/*`,
 > `GET /learners/{name}/consent`) is in as the account-flow gate (README
 > §10), persisted to its own file store (server `-accounts`); enforcing it
@@ -351,10 +355,15 @@ done-condition is met**, per the original README's workflow discipline
 - **Done:** the engine (`session/`, `ai/`), the application layer that owns
   the loop (`tutor/`), a session store (in-memory `MemoryStore` for tests,
   durable `FileStore` for the server), and the HTTP boundary (`api/`: begin,
-  input, resume) are implemented in Go and proven by 122 automated tests in
+  input, resume) are implemented in Go and proven by 130 automated tests in
   `tests/`; the full loop runs over the API. The guardian consent layer
   (`accounts/`) adds its own verified tests (register/login/consent over
-  HTTP and against the account store).
+  HTTP and against the account store). Content coverage has widened from one
+  topic to a small multi-subject catalog — Mathematics
+  (Addition/Subtraction/Multiplication/Division) and English Language
+  (Parts of Speech), each in all three band voices, with tests proving each
+  topic drives the full loop to mastery and subjects switch without losing
+  per-topic mastery.
 - **Remaining:** the Stage 0 real-learner item (Blueprint-tracked). Durable
   persistence is done: file-backed `FileStore` (default) and an optional
   PostgreSQL store behind the same Store contract (server `-dsn`), per

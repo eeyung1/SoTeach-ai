@@ -57,11 +57,13 @@ it is the product's demonstration moment, not a loss leader.
   payment flow. Authentication and payments remain on Agent.md §50's
   do-not-skip list until the core is durable — the core now is (Stages 1-2
   done), so these become legitimate later stages, not the next commits.
-- **The content library ("and many more concepts").** Today the server has
-  exactly one topic (Addition) on deterministic stub content. A paid catalog
-  only converts if there is a curriculum-scoped, age-calibrated, reliably
-  checkable library behind it — the largest unbuilt dependency under this
-  idea, and the reason a content pipeline/AI content matters.
+- **The content library ("and many more concepts").** The server now teaches
+  a small deterministic, age-calibrated set — Mathematics (Addition,
+  Subtraction, Multiplication, Division) and the first English Language
+  topic (Parts of Speech) — still far short of a paid catalog. A paid
+  catalog only converts if there is a curriculum-scoped, age-calibrated,
+  reliably checkable library behind it — the largest unbuilt dependency
+  under this idea, and the reason a content pipeline/AI content matters.
 - **A clean free-tier boundary.** The free teaser must never imply mastery.
   Per README §2/§3, reading an explanation is not evidence of understanding —
   only PRACTICE + VERIFY close a concept. The free diagnosis should end on an
