@@ -1675,7 +1675,7 @@ tutor/    — application layer that owns the loop: BeginTopic, SubmitDiagnosis,
 api/      — thin REST/JSON HTTP boundary over the tutor and store (Agent.md §19)
 web/      — embedded Stage 2 web client (plain HTML/CSS/JS)
 cmd/server — runnable server: API + static web on one origin
-tests/    — 103 behavior tests, all passing via `go test ./tests/`
+tests/    — 108 behavior tests, all passing via `go test ./tests/`
 
 Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
 - The full server-owned loop runs over HTTP: begin -> diagnose -> practice ->
@@ -1708,6 +1708,9 @@ Verified behavior (narrow MVP slice — Mathematics/Addition, single learner):
 - The tutor teaches the gap after repeated wrong answers (streak >= 2) and
   honors stop/quit/exit/enough as a learner exit that allows a fresh begin
   (README §9).
+- Content is age-calibrated: three distinct band voices (Primary 4-6, JSS1-3,
+  SSS1-3) across the diagnostic prompt, questions, transfer question,
+  explanation, and completion — set up-front at begin (README §4/§13).
 - Grade-band validation: only Primary 4-6, JSS1-3, SSS1-3 (README §4, §10)
 - AI-validated diagnosis: malformed results rejected, provider failure leaves
   the session untouched (Agent.md §40-42)
@@ -1719,12 +1722,6 @@ Remaining before this backend is fully closed out:
   PostgreSQL store behind the same Store contract (server `-dsn`; its
   integration tests are gated behind SOTEACH_TEST_DSN). API, tutor, and web
   behavior are unchanged across stores.
-
-Deferred product gaps (noted, not yet built):
-
-- Age calibration of content: the web client now captures the grade band and
-  offers a server-owned subject/topic picker, but the engine's content is not
-  yet calibrated to the learner's band.
 
 Open, non-code item (Blueprint-tracked, not a development gate):
 
